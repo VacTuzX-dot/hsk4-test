@@ -1440,7 +1440,11 @@
         for (let i = 0; i < input.length; i++) {
           hash ^= input.charCodeAt(i);
           hash +=
-            (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+            (hash << 1) +
+            (hash << 4) +
+            (hash << 7) +
+            (hash << 8) +
+            (hash << 24);
         }
         return (hash >>> 0).toString(16).padStart(8, "0");
       };
@@ -2426,10 +2430,10 @@
         if (question.type === "order") {
           if (typeof rawValue !== "string") return undefined;
           const labels = Array.isArray(question.labels) ? question.labels : [];
-          const normalized = sanitizePlainText(rawValue.toUpperCase(), 10).replace(
-            /[^A-Z]/g,
-            "",
-          );
+          const normalized = sanitizePlainText(
+            rawValue.toUpperCase(),
+            10,
+          ).replace(/[^A-Z]/g, "");
           if (labels.length === 0 || normalized.length !== labels.length)
             return undefined;
           const unique = new Set(normalized.split(""));
@@ -2507,7 +2511,9 @@
         const safeAnswers = sanitizeAnswersObject(rawState.answers);
         const safeQTimes = sanitizeQTimesObject(rawState.qTimes);
         const safeSkipped = sanitizeSkippedSet(rawState.skippedQs);
-        const safeSectionTimes = sanitizeSectionTimesObject(rawState.sectionTimes);
+        const safeSectionTimes = sanitizeSectionTimesObject(
+          rawState.sectionTimes,
+        );
         const legacySectionElapsed = clampInt(
           rawState.sectionElapsed,
           0,
@@ -2603,7 +2609,9 @@
         };
         const safeAnswers = sanitizeAnswersObject(answers);
         const safeQTimes = sanitizeQTimesObject(mergedQTimes);
-        const safeSkippedQs = Array.from(sanitizeSkippedSet(Array.from(skippedQs)));
+        const safeSkippedQs = Array.from(
+          sanitizeSkippedSet(Array.from(skippedQs)),
+        );
 
         const payload = {
           answers: safeAnswers,
@@ -2683,7 +2691,8 @@
             userName = state.userName;
             sectionTimes = state.sectionTimes;
 
-            sectionStartTime = monotonicNow() - sectionTimes[currentSection] * 1000;
+            sectionStartTime =
+              monotonicNow() - sectionTimes[currentSection] * 1000;
             qStartTime = monotonicNow();
             if (shouldResign) saveState();
             return true;
@@ -2943,7 +2952,7 @@
 
         try {
           const synth = window.speechSynthesis;
-          const u = new SpeechSynthesisUtterance(" ");
+          const u = new SpeechSynthesisUtterance("。");
           u.volume = 0;
           u.rate = 1;
           u.pitch = 1;
@@ -3244,8 +3253,8 @@
             }
           }
 
-          // Delay after cancel to avoid Chromium race
-          setTimeout(speakNextChunk, 220);
+          // Chromium benefits from delay after cancel; iOS works better without it.
+          setTimeout(speakNextChunk, IS_IOS ? 0 : 220);
         });
       }
 
@@ -3261,7 +3270,10 @@
           const usedNative = await speakWithSpeechSynthesis(content, sessionId);
           if (sessionId !== _ttsSessionId || usedNative) return;
 
-          const usedResponsive = await speakWithResponsiveVoice(content, sessionId);
+          const usedResponsive = await speakWithResponsiveVoice(
+            content,
+            sessionId,
+          );
           if (sessionId !== _ttsSessionId || usedResponsive) return;
         } else {
           const usedResponsive = await speakWithResponsiveVoice(
@@ -3476,7 +3488,10 @@
         } else if (q.type === "order") {
           const orderSents = Array.isArray(q.sents) ? q.sents : [];
           const orderLabels = Array.isArray(q.labels) ? q.labels : [];
-          const cur = sanitizePlainText(answers[safeQid] || "", 10).toUpperCase();
+          const cur = sanitizePlainText(
+            answers[safeQid] || "",
+            10,
+          ).toUpperCase();
           h += `<span class="q-num">${safeQid}</span>`;
           h += `<div class="order-sents">${orderSents.map((s, i) => `<div class="order-sent"><strong style="color:var(--accent)">${escapeHTML(orderLabels[i])}</strong> ${escapeHTML(s)}</div>`).join("")}</div>`;
           h += `<div class="order-input">
@@ -3579,7 +3594,10 @@
       function updateTextAnswer(qid, value) {
         const qidNum = Number(qid);
         const question = QUESTION_BY_ID.get(qidNum);
-        if (!question || (question.type !== "write" && question.type !== "free"))
+        if (
+          !question ||
+          (question.type !== "write" && question.type !== "free")
+        )
           return;
         const safeValue = sanitizeAnswerForQuestion(question, value);
         answers[qidNum] = safeValue === undefined ? "" : safeValue;
@@ -4169,14 +4187,17 @@
 
           if (q.audio)
             h += `<p class="rev-text">${escapeHTMLWithBreaks(q.audio)}</p>`;
-          if (q.passage) h += `<p class="rev-text">${escapeHTMLWithBreaks(q.passage)}</p>`;
-          if (q.stmt) h += `<div class="q-statement">★ ${escapeHTML(q.stmt)}</div>`;
+          if (q.passage)
+            h += `<p class="rev-text">${escapeHTMLWithBreaks(q.passage)}</p>`;
+          if (q.stmt)
+            h += `<div class="q-statement">★ ${escapeHTML(q.stmt)}</div>`;
           if (q.question)
             h += `<div class="q-statement">★ ${escapeHTML(q.question)}</div>`;
           if (q.text) h += `<p class="rev-text">${escapeHTML(q.text)}</p>`;
           if (Array.isArray(q.words))
             h += `<p class="rev-text">词语：${q.words.map((w) => escapeHTML(w)).join("　")}</p>`;
-          if (q.word) h += `<p class="rev-text">关键词：${escapeHTML(q.word)}</p>`;
+          if (q.word)
+            h += `<p class="rev-text">关键词：${escapeHTML(q.word)}</p>`;
 
           // Show answer info
           const cAns = getCanonicalAnswer(q.id);
@@ -4267,21 +4288,29 @@
 
         const bindTap = (el, fn) => {
           if (!el) return;
-          let lock = false;
+          let touched = false;
           const run = (e) => {
             if (e) e.preventDefault();
-            if (lock) return;
-            lock = true;
-            try {
-              fn();
-            } finally {
-              setTimeout(() => {
-                lock = false;
-              }, 240);
-            }
+            fn();
           };
-          el.addEventListener("click", run);
-          el.addEventListener("touchend", run, { passive: false });
+          el.addEventListener(
+            "touchend",
+            (e) => {
+              touched = true;
+              run(e);
+              setTimeout(() => {
+                touched = false;
+              }, 700);
+            },
+            { passive: false },
+          );
+          el.addEventListener("click", (e) => {
+            if (touched) {
+              e.preventDefault();
+              return;
+            }
+            run(e);
+          });
         };
 
         bindTap(document.getElementById("resumeContinueBtn"), resumeExam);
@@ -4351,6 +4380,7 @@
         document.getElementById("page1").style.display = "none";
         document.getElementById("examContainer").style.display = "block";
 
+        if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
           updateTimer();
           // Auto-save every 5 seconds to keep timer roughly synced
