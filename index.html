@@ -2816,7 +2816,7 @@
         const normalized = String(text || "").trim();
         if (!normalized) return [];
 
-        const MAX_CHUNK = 180;
+        const MAX_CHUNK = 90;
         if (normalized.length <= MAX_CHUNK) return [normalized];
 
         const chunks = [];
@@ -2833,6 +2833,14 @@
         }
         if (current.trim()) chunks.push(current.trim());
 
+        const pushBounded = (arr, piece) => {
+          const safePiece = String(piece || "").trim();
+          if (!safePiece) return;
+          for (let i = 0; i < safePiece.length; i += MAX_CHUNK) {
+            arr.push(safePiece.slice(i, i + MAX_CHUNK));
+          }
+        };
+
         const result = [];
         for (const chunk of chunks) {
           if (chunk.length <= MAX_CHUNK) {
@@ -2844,13 +2852,13 @@
           let cur = "";
           for (const p of parts) {
             if ((cur + p).length > MAX_CHUNK && cur.length > 0) {
-              result.push(cur.trim());
+              pushBounded(result, cur);
               cur = p;
             } else {
               cur += p;
             }
           }
-          if (cur.trim()) result.push(cur.trim());
+          pushBounded(result, cur);
         }
 
         return result;
@@ -2924,8 +2932,8 @@
           const ok = await new Promise((resolve) => {
             let finished = false;
             const watchdogMs = Math.max(
-              3500,
-              Math.min(16000, chunk.length * 140),
+              6000,
+              Math.min(65000, chunk.length * 280),
             );
             const timeoutId = setTimeout(() => done(false), watchdogMs);
 
