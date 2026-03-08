@@ -8,6 +8,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap"
       rel="stylesheet"
     />
+    <script src="https://code.responsivevoice.org/responsivevoice.js?key=LXqnwrZk"></script>
     <style>
       * {
         margin: 0;
@@ -2435,6 +2436,8 @@
       let _ttsKeepAlive = null;
       let _ttsLoadPromise = null;
       let _ttsUnlocked = false;
+      let _audioUnlocked = false;
+      let _responsiveVoiceUnlocked = false;
       let _ttsFallbackAudio = null;
       let _ttsSessionId = 0;
 
@@ -2443,6 +2446,14 @@
           typeof window !== "undefined" &&
           "speechSynthesis" in window &&
           typeof window.SpeechSynthesisUtterance !== "undefined"
+        );
+      }
+
+      function canUseResponsiveVoice() {
+        return (
+          typeof window !== "undefined" &&
+          window.responsiveVoice &&
+          typeof window.responsiveVoice.speak === "function"
         );
       }
 
@@ -2456,6 +2467,13 @@
 
       function stopTTSPlayback() {
         stopFallbackAudio();
+        if (canUseResponsiveVoice()) {
+          try {
+            window.responsiveVoice.cancel();
+          } catch (e) {
+            // ignore
+          }
+        }
         if (canUseSpeechSynthesis()) {
           const synth = window.speechSynthesis;
           synth.cancel();
@@ -2627,6 +2645,140 @@
         }
       }
 
+      // Android browsers may require a gesture-gated audio unlock before media playback.
+      function unlockAudioPlayback() {
+        if (_audioUnlocked) return;
+        _audioUnlocked = true;
+
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          gain.gain.value = 0.00001;
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          if (ctx.state === "suspended") {
+            const resumed = ctx.resume();
+            if (resumed && typeof resumed.catch === "function") {
+              resumed.catch(() => {});
+            }
+          }
+          osc.start();
+          osc.stop(ctx.currentTime + 0.01);
+          setTimeout(() => {
+            const closed = ctx.close();
+            if (closed && typeof closed.catch === "function") {
+              closed.catch(() => {});
+            }
+          }, 180);
+        } catch (e) {
+          // ignore unlock failure; best effort only
+        }
+      }
+
+      function unlockResponsiveVoice() {
+        if (_responsiveVoiceUnlocked || !canUseResponsiveVoice()) return;
+        _responsiveVoiceUnlocked = true;
+
+        try {
+          if (typeof window.responsiveVoice.clickEvent === "function") {
+            window.responsiveVoice.clickEvent();
+          } else if (
+            typeof window.responsiveVoice.enableWindowClickHook === "function"
+          ) {
+            window.responsiveVoice.enableWindowClickHook();
+          }
+          if ("enableEstimationTimeout" in window.responsiveVoice) {
+            // Better for Chinese text to prevent estimated timeout cutting speech.
+            window.responsiveVoice.enableEstimationTimeout = false;
+          }
+        } catch (e) {
+          // ignore unlock failure; best effort only
+        }
+      }
+
+      function pickResponsiveVoiceName() {
+        const preferred = [
+          "Chinese Female",
+          "Chinese Male",
+          "Chinese Taiwan Female",
+          "Chinese Taiwan Male",
+          "Chinese (Hong Kong) Female",
+          "Chinese (Hong Kong) Male",
+        ];
+        if (!canUseResponsiveVoice()) return preferred[0];
+
+        try {
+          if (typeof window.responsiveVoice.getVoices !== "function") {
+            return preferred[0];
+          }
+          const voices = window.responsiveVoice.getVoices() || [];
+          const names = voices
+            .map((v) => {
+              if (typeof v === "string") return v;
+              if (v && typeof v.name === "string") return v.name;
+              if (v && typeof v.voiceName === "string") return v.voiceName;
+              return "";
+            })
+            .filter(Boolean);
+          for (const v of preferred) {
+            if (names.includes(v)) return v;
+          }
+        } catch (e) {
+          // ignore lookup failure and use default
+        }
+
+        return preferred[0];
+      }
+
+      async function speakWithResponsiveVoice(text, sessionId) {
+        if (!canUseResponsiveVoice()) return false;
+
+        const chunks = splitTextForTTS(text);
+        if (chunks.length === 0) return false;
+
+        const voice = pickResponsiveVoiceName();
+        for (const chunk of chunks) {
+          if (sessionId !== _ttsSessionId) return false;
+
+          const ok = await new Promise((resolve) => {
+            let finished = false;
+            const watchdogMs = Math.max(
+              3500,
+              Math.min(16000, chunk.length * 140),
+            );
+            const timeoutId = setTimeout(() => done(false), watchdogMs);
+
+            function done(status) {
+              if (finished) return;
+              finished = true;
+              clearTimeout(timeoutId);
+              resolve(status);
+            }
+
+            const options = {
+              rate: 0.9,
+              pitch: 1,
+              volume: 1,
+              onend: () => done(true),
+              onerror: () => done(false),
+            };
+
+            try {
+              window.responsiveVoice.speak(chunk, voice, options);
+            } catch (e) {
+              done(false);
+            }
+          });
+
+          if (!ok) return false;
+        }
+
+        return true;
+      }
+
       async function playChunkViaFallbackAudio(chunk, sessionId) {
         const q = encodeURIComponent(chunk);
         const urls = [
@@ -2647,8 +2799,10 @@
                 if (done) return;
                 done = true;
                 clearTimeout(timeoutId);
+                audio.pause();
                 audio.onended = null;
                 audio.onerror = null;
+                audio.src = "";
                 if (_ttsFallbackAudio === audio) _ttsFallbackAudio = null;
                 if (ok) resolve(true);
                 else reject(new Error("audio-fallback-failed"));
@@ -2656,9 +2810,15 @@
 
               const timeoutId = setTimeout(() => finish(false), 12000);
               audio.preload = "auto";
+              audio.playsInline = true;
+              audio.setAttribute("playsinline", "");
+              audio.setAttribute("webkit-playsinline", "");
+              audio.muted = false;
+              audio.volume = 1;
               audio.src = url;
               audio.onended = () => finish(true);
               audio.onerror = () => finish(false);
+              audio.load();
 
               const playPromise = audio.play();
               if (playPromise && typeof playPromise.catch === "function") {
@@ -2686,7 +2846,8 @@
       async function speakWithSpeechSynthesis(text, sessionId) {
         if (!canUseSpeechSynthesis()) return false;
 
-        await loadVoices();
+        // Keep user-gesture context on mobile; load voices asynchronously in background.
+        if (!_ttsVoicesLoaded && !_ttsLoadPromise) loadVoices();
         if (sessionId !== _ttsSessionId) return false;
 
         const synth = window.speechSynthesis;
@@ -2782,8 +2943,12 @@
         const content = String(text || "").trim();
         if (!content) return;
 
+        primeTTS();
         const sessionId = ++_ttsSessionId;
         stopTTSPlayback();
+
+        const usedResponsive = await speakWithResponsiveVoice(content, sessionId);
+        if (sessionId !== _ttsSessionId || usedResponsive) return;
 
         const usedNative = await speakWithSpeechSynthesis(content, sessionId);
         if (sessionId !== _ttsSessionId || usedNative) return;
@@ -2795,24 +2960,27 @@
       }
 
       function primeTTS() {
-        if (!canUseSpeechSynthesis()) return;
-        unlockTTS();
-        if (!_ttsVoicesLoaded) loadVoices();
+        unlockAudioPlayback();
+        unlockResponsiveVoice();
+        if (canUseSpeechSynthesis()) {
+          unlockTTS();
+          if (!_ttsVoicesLoaded && !_ttsLoadPromise) loadVoices();
+        }
       }
+
+      // Warm up on first user interaction (important on iOS/Android)
+      ["pointerdown", "touchstart", "mousedown", "keydown", "click"].forEach(
+        (evt) => {
+          document.addEventListener(evt, primeTTS, {
+            once: true,
+            passive: true,
+          });
+        },
+      );
 
       // Initialize voice loading immediately
       if (canUseSpeechSynthesis()) {
         loadVoices();
-
-        // Warm up on first user interaction (important on iOS Safari)
-        ["pointerdown", "touchstart", "mousedown", "keydown", "click"].forEach(
-          (evt) => {
-            document.addEventListener(evt, primeTTS, {
-              once: true,
-              passive: true,
-            });
-          },
-        );
 
         // Some mobile browsers pause speech when tab/background changes
         document.addEventListener("visibilitychange", () => {
@@ -3738,6 +3906,8 @@
       }
 
       function startExam(isResume = false) {
+        primeTTS();
+
         if (!isResume) {
           userName = document.getElementById("userNameInput").value.trim();
           if (!userName) {
