@@ -400,6 +400,7 @@
         text-align: center;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         animation: slideUp 0.3s ease-out;
+        pointer-events: auto;
       }
       .resume-btn {
         margin-top: 12px;
@@ -411,6 +412,8 @@
         cursor: pointer;
         font-size: 1em;
         transition: all 0.2s;
+        -webkit-appearance: none;
+        touch-action: manipulation;
       }
       .btn-continue {
         background: var(--red);
@@ -1443,6 +1446,21 @@
       };
       const signStatePayload = (payload) =>
         hashFNV1a(`${STORAGE_SIG_SALT}|${JSON.stringify(payload)}`);
+      const IS_IOS = (() => {
+        if (typeof navigator === "undefined") return false;
+        return (
+          /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+        );
+      })();
+      const safeRemoveElement = (el) => {
+        if (!el) return;
+        if (typeof el.remove === "function") {
+          el.remove();
+          return;
+        }
+        if (el.parentNode) el.parentNode.removeChild(el);
+      };
       const decodeAns = (encoded) => {
         if (typeof encoded !== "string") return encoded;
         try {
@@ -3239,11 +3257,22 @@
         const sessionId = ++_ttsSessionId;
         stopTTSPlayback();
 
-        const usedResponsive = await speakWithResponsiveVoice(content, sessionId);
-        if (sessionId !== _ttsSessionId || usedResponsive) return;
+        if (IS_IOS) {
+          const usedNative = await speakWithSpeechSynthesis(content, sessionId);
+          if (sessionId !== _ttsSessionId || usedNative) return;
 
-        const usedNative = await speakWithSpeechSynthesis(content, sessionId);
-        if (sessionId !== _ttsSessionId || usedNative) return;
+          const usedResponsive = await speakWithResponsiveVoice(content, sessionId);
+          if (sessionId !== _ttsSessionId || usedResponsive) return;
+        } else {
+          const usedResponsive = await speakWithResponsiveVoice(
+            content,
+            sessionId,
+          );
+          if (sessionId !== _ttsSessionId || usedResponsive) return;
+
+          const usedNative = await speakWithSpeechSynthesis(content, sessionId);
+          if (sessionId !== _ttsSessionId || usedNative) return;
+        }
 
         const usedFallback = await speakWithAudioFallback(content, sessionId);
         if (!usedFallback && sessionId === _ttsSessionId) {
@@ -4230,37 +4259,65 @@
             <p style="color:var(--txt2);margin-bottom:24px;line-height:1.5;">
               คุณ <b>${escapeHTML(userName)}</b> มีแบบทดสอบที่ยังทำไม่เสร็จ<br>ต้องการทำต่อจากจุดเดิมหรือไม่?
             </p>
-            <button class="resume-btn btn-continue" onclick="resumeExam()">▶ ทำข้อสอบต่อ</button>
-            <button class="resume-btn btn-restart" onclick="restartExam()">🔄 เริ่มทำใหม่ทั้งหมด (ลบข้อมูลเดิม)</button>
+            <button class="resume-btn btn-continue" id="resumeContinueBtn">▶ ทำข้อสอบต่อ</button>
+            <button class="resume-btn btn-restart" id="resumeRestartBtn">🔄 เริ่มทำใหม่ทั้งหมด (ลบข้อมูลเดิม)</button>
           </div>
         `;
         document.body.appendChild(overlay);
+
+        const bindTap = (el, fn) => {
+          if (!el) return;
+          let lock = false;
+          const run = (e) => {
+            if (e) e.preventDefault();
+            if (lock) return;
+            lock = true;
+            try {
+              fn();
+            } finally {
+              setTimeout(() => {
+                lock = false;
+              }, 240);
+            }
+          };
+          el.addEventListener("click", run);
+          el.addEventListener("touchend", run, { passive: false });
+        };
+
+        bindTap(document.getElementById("resumeContinueBtn"), resumeExam);
+        bindTap(document.getElementById("resumeRestartBtn"), restartExam);
+      }
+
+      function closeResumeModal() {
+        const modal = document.getElementById("resumeModalOverlay");
+        safeRemoveElement(modal);
       }
 
       function resumeExam() {
-        document.getElementById("resumeModalOverlay").remove();
+        closeResumeModal();
         startExam(true);
       }
 
       function restartExam() {
-        if (
-          confirm(
-            "แน่ใจหรือไม่ที่จะลบข้อมูลเดิมที่ทำค้างไว้ทั้งหมด? (ข้อมูลเดิมจะไม่สามารถกู้คืนได้)",
-          )
-        ) {
-          document.getElementById("resumeModalOverlay").remove();
-          localStorage.removeItem(STORAGE_KEY);
-          answers = {};
-          qTimes = {};
-          currentIdx = 0;
-          currentSection = "listening";
-          sectionTimes = { listening: 0, reading: 0, writing: 0 };
-          skippedQs = new Set();
-          highestIdx = 0;
-          userName = "";
-          document.getElementById("userNameInput").value = "";
-          checkName();
-        }
+        const shouldReset = IS_IOS
+          ? true
+          : confirm(
+              "แน่ใจหรือไม่ที่จะลบข้อมูลเดิมที่ทำค้างไว้ทั้งหมด? (ข้อมูลเดิมจะไม่สามารถกู้คืนได้)",
+            );
+        if (!shouldReset) return;
+
+        closeResumeModal();
+        localStorage.removeItem(STORAGE_KEY);
+        answers = {};
+        qTimes = {};
+        currentIdx = 0;
+        currentSection = "listening";
+        sectionTimes = { listening: 0, reading: 0, writing: 0 };
+        skippedQs = new Set();
+        highestIdx = 0;
+        userName = "";
+        document.getElementById("userNameInput").value = "";
+        checkName();
       }
 
       function init() {
