@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://code.responsivevoice.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:; media-src 'self' https://translate.google.com https://translate.googleapis.com https://dict.youdao.com; connect-src 'self' https://translate.google.com https://translate.googleapis.com https://dict.youdao.com https://code.responsivevoice.org; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self';"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>HSK 4 模拟考试 - 完整版</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap"
@@ -1349,6 +1354,11 @@
               class="name-input"
               id="userNameInput"
               placeholder="กรอกชื่อ-นามสกุลของคุณ"
+              maxlength="80"
+              autocomplete="off"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck="false"
               oninput="checkName()"
             />
             <p class="name-hint">* กรอกชื่อเพื่อเปิดใช้งานปุ่มเริ่มสอบ</p>
@@ -1392,19 +1402,64 @@
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&#039;");
       };
+      const escapeHTMLWithBreaks = (str) =>
+        escapeHTML(str).replace(/\r?\n/g, "<br>");
+      const sanitizePlainText = (value, maxLen = 200) => {
+        if (value === null || value === undefined) return "";
+        return String(value)
+          .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+          .slice(0, maxLen);
+      };
+      const sanitizeUserName = (value) =>
+        sanitizePlainText(value, 80).replace(/\s+/g, " ").trim();
+      const clampInt = (value, min, max, fallback = min) => {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return fallback;
+        return Math.min(max, Math.max(min, Math.floor(n)));
+      };
+      const isPlainObject = (value) =>
+        !!value &&
+        typeof value === "object" &&
+        Object.prototype.toString.call(value) === "[object Object]";
+      const STORAGE_KEY = "hsk4_exam_state";
+      const STORAGE_SIG_SALT = "hsk4_state_sig_20260309";
+      const MAX_STATE_SIZE = 200000;
+      const MAX_WRITE_ANSWER_LEN = 180;
+      const MAX_FREE_ANSWER_LEN = 280;
+      let _lastMonotonicNow = Date.now();
+      const monotonicNow = () => {
+        const now = Date.now();
+        if (now > _lastMonotonicNow) _lastMonotonicNow = now;
+        return _lastMonotonicNow;
+      };
+      const hashFNV1a = (input) => {
+        let hash = 0x811c9dc5;
+        for (let i = 0; i < input.length; i++) {
+          hash ^= input.charCodeAt(i);
+          hash +=
+            (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+        }
+        return (hash >>> 0).toString(16).padStart(8, "0");
+      };
+      const signStatePayload = (payload) =>
+        hashFNV1a(`${STORAGE_SIG_SALT}|${JSON.stringify(payload)}`);
       const decodeAns = (encoded) => {
         if (typeof encoded !== "string") return encoded;
-        const b64 = encoded.split("").reverse().join("");
-        const bytes = atob(b64);
-        let utf8Bytes = new Uint8Array(bytes.length);
-        for (let i = 0; i < bytes.length; ++i)
-          utf8Bytes[i] = bytes.charCodeAt(i);
-        const decoded = new window.TextDecoder().decode(utf8Bytes);
+        try {
+          const b64 = encoded.split("").reverse().join("");
+          const bytes = atob(b64);
+          let utf8Bytes = new Uint8Array(bytes.length);
+          for (let i = 0; i < bytes.length; ++i)
+            utf8Bytes[i] = bytes.charCodeAt(i);
+          const decoded = new window.TextDecoder().decode(utf8Bytes);
 
-        if (decoded === "true") return true;
-        if (decoded === "false") return false;
-        if (!isNaN(decoded) && decoded.trim() !== "") return Number(decoded);
-        return decoded;
+          if (decoded === "true") return true;
+          if (decoded === "false") return false;
+          if (!isNaN(decoded) && decoded.trim() !== "") return Number(decoded);
+          return decoded;
+        } catch (e) {
+          return encoded;
+        }
       };
 
       // Anti-Inspect Events
@@ -2314,14 +2369,179 @@
           type: "free",
         }),
       );
+      const QUESTION_BY_ID = new Map(ALL_Q.map((q) => [q.id, q]));
+      const getCanonicalAnswer = (() => {
+        const answerMap = new Map();
+        ALL_Q.forEach((q) => {
+          answerMap.set(q.id, decodeAns(q.ans));
+        });
+        return (qid) => answerMap.get(qid);
+      })();
+      const sanitizeAnswerForQuestion = (question, rawValue) => {
+        if (!question) return undefined;
+
+        if (question.type === "tf") {
+          return typeof rawValue === "boolean" ? rawValue : undefined;
+        }
+
+        if (question.type === "mc" || question.type === "fill") {
+          const options =
+            question.type === "mc"
+              ? Array.isArray(question.opts)
+                ? question.opts
+                : []
+              : Array.isArray(question.wordBank)
+                ? question.wordBank
+                : [];
+          const idx = Number(rawValue);
+          if (
+            Number.isInteger(idx) &&
+            idx >= 0 &&
+            idx < options.length &&
+            options.length > 0
+          ) {
+            return idx;
+          }
+          return undefined;
+        }
+
+        if (question.type === "order") {
+          if (typeof rawValue !== "string") return undefined;
+          const labels = Array.isArray(question.labels) ? question.labels : [];
+          const normalized = sanitizePlainText(rawValue.toUpperCase(), 10).replace(
+            /[^A-Z]/g,
+            "",
+          );
+          if (labels.length === 0 || normalized.length !== labels.length)
+            return undefined;
+          const unique = new Set(normalized.split(""));
+          if (unique.size !== labels.length) return undefined;
+          const allowed = new Set(labels.map((l) => String(l).toUpperCase()));
+          if (![...unique].every((ch) => allowed.has(ch))) return undefined;
+          return normalized;
+        }
+
+        if (question.type === "write") {
+          return sanitizePlainText(rawValue, MAX_WRITE_ANSWER_LEN);
+        }
+
+        if (question.type === "free") {
+          return sanitizePlainText(rawValue, MAX_FREE_ANSWER_LEN);
+        }
+
+        return undefined;
+      };
+      const sanitizeAnswersObject = (rawAnswers) => {
+        const safe = {};
+        if (!isPlainObject(rawAnswers)) return safe;
+        Object.entries(rawAnswers).forEach(([rawQid, rawValue]) => {
+          const qid = Number(rawQid);
+          if (!Number.isInteger(qid) || !QUESTION_BY_ID.has(qid)) return;
+          const question = QUESTION_BY_ID.get(qid);
+          const safeValue = sanitizeAnswerForQuestion(question, rawValue);
+          if (safeValue !== undefined) safe[qid] = safeValue;
+        });
+        return safe;
+      };
+      const sanitizeQTimesObject = (rawQTimes) => {
+        const safe = {};
+        if (!isPlainObject(rawQTimes)) return safe;
+        Object.entries(rawQTimes).forEach(([rawQid, rawValue]) => {
+          const qid = Number(rawQid);
+          if (!Number.isInteger(qid) || !QUESTION_BY_ID.has(qid)) return;
+          const question = QUESTION_BY_ID.get(qid);
+          const maxSec = SECTION_TIME[question.section] || 3600;
+          safe[qid] = clampInt(rawValue, 0, maxSec, 0);
+        });
+        return safe;
+      };
+      const sanitizeSkippedSet = (rawSkipped) => {
+        const safe = new Set();
+        if (!Array.isArray(rawSkipped)) return safe;
+        rawSkipped.forEach((rawQid) => {
+          const qid = Number(rawQid);
+          if (Number.isInteger(qid) && QUESTION_BY_ID.has(qid)) {
+            safe.add(qid);
+          }
+        });
+        return safe;
+      };
+      const sanitizeSectionTimesObject = (rawSectionTimes) => {
+        const safe = {
+          listening: 0,
+          reading: 0,
+          writing: 0,
+        };
+        if (!isPlainObject(rawSectionTimes)) return safe;
+        ["listening", "reading", "writing"].forEach((sec) => {
+          safe[sec] = clampInt(rawSectionTimes[sec], 0, SECTION_TIME[sec], 0);
+        });
+        return safe;
+      };
+      const sanitizeLoadedState = (rawState) => {
+        if (!isPlainObject(rawState)) return null;
+        const safeSection = ["listening", "reading", "writing"].includes(
+          rawState.currentSection,
+        )
+          ? rawState.currentSection
+          : "listening";
+        const sec = SECTIONS[safeSection];
+        const safeAnswers = sanitizeAnswersObject(rawState.answers);
+        const safeQTimes = sanitizeQTimesObject(rawState.qTimes);
+        const safeSkipped = sanitizeSkippedSet(rawState.skippedQs);
+        const safeSectionTimes = sanitizeSectionTimesObject(rawState.sectionTimes);
+        const legacySectionElapsed = clampInt(
+          rawState.sectionElapsed,
+          0,
+          SECTION_TIME[safeSection],
+          0,
+        );
+        safeSectionTimes[safeSection] = Math.max(
+          safeSectionTimes[safeSection],
+          legacySectionElapsed,
+        );
+
+        let safeCurrentIdx = clampInt(
+          rawState.currentIdx,
+          sec.start,
+          sec.end - 1,
+          sec.start,
+        );
+        if (safeSkipped.has(ALL_Q[safeCurrentIdx].id)) {
+          let scanIdx = sec.start;
+          while (scanIdx < sec.end && safeSkipped.has(ALL_Q[scanIdx].id)) {
+            scanIdx++;
+          }
+          safeCurrentIdx = scanIdx < sec.end ? scanIdx : sec.start;
+        }
+
+        let safeHighestIdx = clampInt(
+          rawState.highestIdx,
+          sec.start,
+          sec.end - 1,
+          safeCurrentIdx,
+        );
+        if (safeCurrentIdx > safeHighestIdx) safeHighestIdx = safeCurrentIdx;
+
+        return {
+          answers: safeAnswers,
+          qTimes: safeQTimes,
+          currentIdx: safeCurrentIdx,
+          currentSection: safeSection,
+          skippedQs: safeSkipped,
+          highestIdx: safeHighestIdx,
+          userName: sanitizeUserName(rawState.userName),
+          sectionTimes: safeSectionTimes,
+        };
+      };
 
       // HSK 4 Practice Test - Sequential App Logic
       let answers = {};
       let qTimes = {};
       let currentIdx = 0;
       let currentSection = "listening";
-      let sectionStartTime = Date.now();
-      let qStartTime = Date.now();
+      let sectionStartTime = monotonicNow();
+      let qStartTime = monotonicNow();
       let timerInterval;
       let examFinished = false;
       let sectionTimes = { listening: 0, reading: 0, writing: 0 };
@@ -2332,54 +2552,126 @@
       // Save and Load State
       function saveState() {
         if (examFinished) {
-          localStorage.removeItem("hsk4_exam_state");
+          localStorage.removeItem(STORAGE_KEY);
           return;
         }
 
         // Update current elapsed times before saving
         const currentSessionElapsed = Math.floor(
-          (Date.now() - qStartTime) / 1000,
+          (monotonicNow() - qStartTime) / 1000,
         );
         const sectionElapsed = Math.floor(
-          (Date.now() - sectionStartTime) / 1000,
+          (monotonicNow() - sectionStartTime) / 1000,
         );
 
-        const state = {
-          answers,
-          qTimes: {
-            ...qTimes,
-            [ALL_Q[currentIdx].id]:
-              (qTimes[ALL_Q[currentIdx].id] || 0) + currentSessionElapsed,
-          },
-          currentIdx,
-          currentSection,
-          sectionElapsed: sectionTimes[currentSection] + sectionElapsed,
-          skippedQs: Array.from(skippedQs),
-          highestIdx,
-          userName,
+        const liveSectionTimes = {
+          ...sectionTimes,
+          [currentSection]: clampInt(
+            sectionTimes[currentSection] + sectionElapsed,
+            0,
+            SECTION_TIME[currentSection],
+            0,
+          ),
         };
-        localStorage.setItem("hsk4_exam_state", JSON.stringify(state));
+        const currentQid = ALL_Q[currentIdx].id;
+        const mergedQTimes = {
+          ...qTimes,
+          [currentQid]: clampInt(
+            (qTimes[currentQid] || 0) + currentSessionElapsed,
+            0,
+            SECTION_TIME[currentSection],
+            0,
+          ),
+        };
+        const safeAnswers = sanitizeAnswersObject(answers);
+        const safeQTimes = sanitizeQTimesObject(mergedQTimes);
+        const safeSkippedQs = Array.from(sanitizeSkippedSet(Array.from(skippedQs)));
+
+        const payload = {
+          answers: safeAnswers,
+          qTimes: safeQTimes,
+          currentIdx: clampInt(
+            currentIdx,
+            SECTIONS[currentSection].start,
+            SECTIONS[currentSection].end - 1,
+            SECTIONS[currentSection].start,
+          ),
+          currentSection,
+          sectionElapsed: liveSectionTimes[currentSection], // backward compatibility
+          sectionTimes: liveSectionTimes,
+          skippedQs: safeSkippedQs,
+          highestIdx: clampInt(
+            highestIdx,
+            SECTIONS[currentSection].start,
+            SECTIONS[currentSection].end - 1,
+            currentIdx,
+          ),
+          userName: sanitizeUserName(userName),
+        };
+        const wrappedState = {
+          v: 2,
+          payload,
+          sig: signStatePayload(payload),
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(wrappedState));
+        } catch (e) {
+          console.warn("Failed to persist exam state", e);
+        }
       }
 
       function loadState() {
-        const saved = localStorage.getItem("hsk4_exam_state");
+        const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
+          if (saved.length > MAX_STATE_SIZE) {
+            localStorage.removeItem(STORAGE_KEY);
+            return false;
+          }
           try {
-            const state = JSON.parse(saved);
-            answers = state.answers || {};
-            qTimes = state.qTimes || {};
-            currentIdx = state.currentIdx || 0;
-            currentSection = state.currentSection || "listening";
-            skippedQs = new Set(state.skippedQs || []);
-            highestIdx = state.highestIdx || 0;
-            userName = state.userName || "";
+            const parsed = JSON.parse(saved);
+            let rawState = parsed;
+            let shouldResign = false;
 
-            // Restore timings carefully subtracting elapsed
-            sectionStartTime = Date.now() - (state.sectionElapsed || 0) * 1000;
-            qStartTime = Date.now();
+            if (
+              isPlainObject(parsed) &&
+              parsed.v === 2 &&
+              isPlainObject(parsed.payload) &&
+              typeof parsed.sig === "string"
+            ) {
+              const expected = signStatePayload(parsed.payload);
+              if (parsed.sig !== expected) {
+                console.warn("State signature mismatch. Discarding state.");
+                localStorage.removeItem(STORAGE_KEY);
+                return false;
+              }
+              rawState = parsed.payload;
+            } else {
+              // Legacy state from previous versions; sanitize and re-sign.
+              shouldResign = true;
+            }
+
+            const state = sanitizeLoadedState(rawState);
+            if (!state) {
+              localStorage.removeItem(STORAGE_KEY);
+              return false;
+            }
+
+            answers = state.answers;
+            qTimes = state.qTimes;
+            currentIdx = state.currentIdx;
+            currentSection = state.currentSection;
+            skippedQs = state.skippedQs;
+            highestIdx = state.highestIdx;
+            userName = state.userName;
+            sectionTimes = state.sectionTimes;
+
+            sectionStartTime = monotonicNow() - sectionTimes[currentSection] * 1000;
+            qStartTime = monotonicNow();
+            if (shouldResign) saveState();
             return true;
           } catch (e) {
             console.error("Failed to load state", e);
+            localStorage.removeItem(STORAGE_KEY);
           }
         }
         return false;
@@ -2996,7 +3288,7 @@
       function updateTimer() {
         if (examFinished) return;
         const sec = SECTIONS[currentSection];
-        const elapsed = Math.floor((Date.now() - sectionStartTime) / 1000);
+        const elapsed = Math.floor((monotonicNow() - sectionStartTime) / 1000);
         const remain = Math.max(0, sec.time - elapsed);
         const m = Math.floor(remain / 60),
           s = remain % 60;
@@ -3013,7 +3305,7 @@
         // Per-question countdown
         const avgTime = TIME_PER_Q[currentSection];
         const currentSessionElapsed = Math.floor(
-          (Date.now() - qStartTime) / 1000,
+          (monotonicNow() - qStartTime) / 1000,
         );
         const prevElapsed = qTimes[ALL_Q[currentIdx].id] || 0;
         const qElapsed = prevElapsed + currentSessionElapsed;
@@ -3050,7 +3342,7 @@
         const qId = ALL_Q[currentIdx].id;
         skippedQs.add(qId);
         const currentSessionElapsed = Math.floor(
-          (Date.now() - qStartTime) / 1000,
+          (monotonicNow() - qStartTime) / 1000,
         );
         qTimes[qId] = (qTimes[qId] || 0) + currentSessionElapsed;
 
@@ -3063,7 +3355,7 @@
         if (nextIdx < sec.end) {
           currentIdx = nextIdx;
           highestIdx = Math.max(highestIdx, currentIdx);
-          qStartTime = Date.now();
+          qStartTime = monotonicNow();
           saveState();
           renderQuestion();
         } else {
@@ -3089,12 +3381,20 @@
         const totalInSec = secEnd - secStart;
         const partName = getPartName(currentIdx);
         const avgTime = TIME_PER_Q[currentSection];
+        const qid = Number(q.id);
+        const sectionProgress = clampInt(
+          (qNumInSec / totalInSec) * 100,
+          0,
+          100,
+          0,
+        );
+        const safeQid = Number.isInteger(qid) ? qid : 0;
 
         let h = `<div class="q-card" style="margin-bottom: 20px;">
   <div class="q-header">
     <div class="q-progress-info">
-      <span class="section-badge" style="background:${sec.color}20; color:${sec.color}">${sec.icon} ${sec.name}</span>
-      <span class="part-name">${partName}</span>
+      <span class="section-badge" style="background:${sec.color}20; color:${sec.color}">${escapeHTML(sec.icon)} ${escapeHTML(sec.name)}</span>
+      <span class="part-name">${escapeHTML(partName)}</span>
     </div>
     <div class="q-counter">${qNumInSec} / ${totalInSec}</div>
   </div>
@@ -3104,69 +3404,82 @@
     <div class="timer-item"><span class="timer-label">建议用时</span><span class="timer-val">${avgTime}s</span></div>
   </div>
   <div style="height:4px;background:var(--glass);border-radius:2px;margin-bottom:12px;overflow:hidden"><div id="qTimeBar" style="height:100%;border-radius:2px;transition:all .3s;width:100%"></div></div>
-  <div class="q-progress-bar" style="margin-bottom: 0;"><div class="q-progress-fill" style="width:${(qNumInSec / totalInSec) * 100}%;background:var(--red)"></div></div>
+  <div class="q-progress-bar" style="margin-bottom: 0;"><div class="q-progress-fill" style="width:${sectionProgress}%;background:var(--red)"></div></div>
 </div>`;
 
         // Question card
         h += `<div class="q-card">`;
 
         if (q.type === "tf") {
-          h += `<div class="q-top"><span class="q-num">${q.id}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio)">🔊 播放录音</button></div>`;
-          h += `<div class="audio-text">${q.audio}</div>`;
-          h += `<div class="q-statement">★ ${q.stmt}</div>`;
+          h += `<div class="q-top"><span class="q-num">${safeQid}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio)">🔊 播放录音</button></div>`;
+          h += `<div class="audio-text">${escapeHTML(q.audio)}</div>`;
+          h += `<div class="q-statement">★ ${escapeHTML(q.stmt)}</div>`;
           h += `<div class="tf-opts">
-      <div class="tf-btn${answers[q.id] === true ? " selected" : ""}" onclick="selectAnswer(${q.id},true,this)">✓ 对</div>
-      <div class="tf-btn${answers[q.id] === false ? " selected" : ""}" onclick="selectAnswer(${q.id},false,this)">✗ 错</div>
+      <div class="tf-btn${answers[safeQid] === true ? " selected" : ""}" onclick="selectAnswer(${safeQid},true,this)">✓ 对</div>
+      <div class="tf-btn${answers[safeQid] === false ? " selected" : ""}" onclick="selectAnswer(${safeQid},false,this)">✗ 错</div>
     </div>`;
         } else if (q.type === "mc") {
-          const labels = q.opts.length <= 4 ? "ABCD" : "ABCDEF";
-          h += `<div class="q-top"><span class="q-num">${q.id}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio||ALL_Q[${currentIdx}].passage)">🔊 播放</button></div>`;
+          const mcOptions = Array.isArray(q.opts) ? q.opts : [];
+          const labels = mcOptions.length <= 4 ? "ABCD" : "ABCDEF";
+          h += `<div class="q-top"><span class="q-num">${safeQid}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio||ALL_Q[${currentIdx}].passage)">🔊 播放</button></div>`;
           if (q.audio)
-            h += `<div class="audio-text">${q.audio.replace(/\n/g, "<br>")}</div>`;
+            h += `<div class="audio-text">${escapeHTMLWithBreaks(q.audio)}</div>`;
           if (q.passage) {
-            h += `<div class="passage-text">${q.passage}</div>`;
-            h += `<div class="q-statement">★ ${q.question}</div>`;
+            h += `<div class="passage-text">${escapeHTMLWithBreaks(q.passage)}</div>`;
+            h += `<div class="q-statement">★ ${escapeHTML(q.question)}</div>`;
           }
           h += `<div class="options">`;
-          q.opts.forEach((o, i) => {
-            h += `<div class="opt${answers[q.id] === i ? " selected" : ""}" onclick="selectAnswer(${q.id},${i},this)"><span class="opt-label">${labels[i]}</span>${o}</div>`;
+          mcOptions.forEach((o, i) => {
+            h += `<div class="opt${answers[safeQid] === i ? " selected" : ""}" onclick="selectAnswer(${safeQid},${i},this)"><span class="opt-label">${labels[i]}</span>${escapeHTML(o)}</div>`;
           });
           h += `</div>`;
         } else if (q.type === "fill") {
+          const fillOptions = Array.isArray(q.wordBank) ? q.wordBank : [];
           const labels = "ABCDEF";
-          h += `<span class="q-num">${q.id}</span>`;
-          h += `<div class="word-bank">${q.wordBank.map((w, i) => `<span class="wb-item">${labels[i]} ${w}</span>`).join("")}</div>`;
-          h += `<div class="q-text-fill">${q.text}</div>`;
+          h += `<span class="q-num">${safeQid}</span>`;
+          h += `<div class="word-bank">${fillOptions.map((w, i) => `<span class="wb-item">${labels[i]} ${escapeHTML(w)}</span>`).join("")}</div>`;
+          h += `<div class="q-text-fill">${escapeHTML(q.text)}</div>`;
           h += `<div class="options">`;
-          q.wordBank.forEach((w, i) => {
-            h += `<div class="opt${answers[q.id] === i ? " selected" : ""}" onclick="selectAnswer(${q.id},${i},this)"><span class="opt-label">${labels[i]}</span>${w}</div>`;
+          fillOptions.forEach((w, i) => {
+            h += `<div class="opt${answers[safeQid] === i ? " selected" : ""}" onclick="selectAnswer(${safeQid},${i},this)"><span class="opt-label">${labels[i]}</span>${escapeHTML(w)}</div>`;
           });
           h += `</div>`;
         } else if (q.type === "order") {
-          h += `<span class="q-num">${q.id}</span>`;
-          h += `<div class="order-sents">${q.sents.map((s, i) => `<div class="order-sent"><strong style="color:var(--accent)">${q.labels[i]}</strong> ${s}</div>`).join("")}</div>`;
-          const cur = answers[q.id] || "";
+          const orderSents = Array.isArray(q.sents) ? q.sents : [];
+          const orderLabels = Array.isArray(q.labels) ? q.labels : [];
+          const cur = sanitizePlainText(answers[safeQid] || "", 10).toUpperCase();
+          h += `<span class="q-num">${safeQid}</span>`;
+          h += `<div class="order-sents">${orderSents.map((s, i) => `<div class="order-sent"><strong style="color:var(--accent)">${escapeHTML(orderLabels[i])}</strong> ${escapeHTML(s)}</div>`).join("")}</div>`;
           h += `<div class="order-input">
       <span style="color:var(--txt2)">正确顺序：</span>
       ${[0, 1, 2]
         .map(
           (
             i,
-          ) => `<select onchange="selectOrderAnswer(${q.id})" class="order-select" data-pos="${i}">
-        <option value="">第${i + 1}</option>${q.labels.map((l) => `<option value="${l}"${cur[i] === l ? " selected" : ""}>${l}</option>`).join("")}
+          ) => `<select onchange="selectOrderAnswer(${safeQid})" class="order-select" data-pos="${i}">
+        <option value="">第${i + 1}</option>${orderLabels.map((l) => `<option value="${escapeHTML(l)}"${cur[i] === String(l).toUpperCase() ? " selected" : ""}>${escapeHTML(l)}</option>`).join("")}
       </select>`,
         )
         .join("")}
     </div>`;
         } else if (q.type === "write") {
-          h += `<span class="q-num">${q.id}</span>`;
-          h += `<div class="word-bank">${q.words.map((w) => `<span class="wb-item blue">${w}</span>`).join("")}</div>`;
-          h += `<input type="text" class="write-input" placeholder="请写出正确的句子…" value="${answers[q.id] || ""}" oninput="answers[${q.id}]=this.value; saveState();">`;
+          const writeWords = Array.isArray(q.words) ? q.words : [];
+          const currentValue = sanitizePlainText(
+            answers[safeQid] || "",
+            MAX_WRITE_ANSWER_LEN,
+          );
+          h += `<span class="q-num">${safeQid}</span>`;
+          h += `<div class="word-bank">${writeWords.map((w) => `<span class="wb-item blue">${escapeHTML(w)}</span>`).join("")}</div>`;
+          h += `<input type="text" class="write-input" placeholder="请写出正确的句子…" maxlength="${MAX_WRITE_ANSWER_LEN}" value="${escapeHTML(currentValue)}" oninput="updateTextAnswer(${safeQid},this.value)">`;
         } else if (q.type === "free") {
-          h += `<span class="q-num">${q.id}</span>`;
-          h += `<div class="word-highlight">${q.word}</div>`;
-          h += `<p style="color:var(--txt2);font-size:.9em;margin:8px 0">${q.hint}</p>`;
-          h += `<textarea class="write-input" rows="2" placeholder="请造一个句子…" oninput="answers[${q.id}]=this.value; saveState();">${answers[q.id] || ""}</textarea>`;
+          const currentValue = sanitizePlainText(
+            answers[safeQid] || "",
+            MAX_FREE_ANSWER_LEN,
+          );
+          h += `<span class="q-num">${safeQid}</span>`;
+          h += `<div class="word-highlight">${escapeHTML(q.word)}</div>`;
+          h += `<p style="color:var(--txt2);font-size:.9em;margin:8px 0">${escapeHTML(q.hint)}</p>`;
+          h += `<textarea class="write-input" rows="2" maxlength="${MAX_FREE_ANSWER_LEN}" placeholder="请造一个句子…" oninput="updateTextAnswer(${safeQid},this.value)">${escapeHTML(currentValue)}</textarea>`;
         }
         h += `</div>`;
 
@@ -3189,7 +3502,7 @@
         if (nextIdx < sec.end) {
           h += `<button class="nav-btn-next" onclick="goQuestion(${nextIdx})">ข้อถัดไป →</button>`;
         } else {
-          h += `<button class="nav-btn-finish" onclick="finishSection()">จบ${sec.name} ✓</button>`;
+          h += `<button class="nav-btn-finish" onclick="finishSection()">จบ${escapeHTML(sec.name)} ✓</button>`;
         }
         h += `</div>`;
 
@@ -3226,14 +3539,30 @@
         if (q.stmt) readText += q.stmt + "。 ";
         if (q.question) readText += q.question + "。 ";
         if (q.text) readText += q.text.replace(/_+/g, "填空") + "。 ";
-        if (q.words) readText += "请完成句子：" + q.words.join("，") + "。 ";
+        if (Array.isArray(q.words))
+          readText += "请完成句子：" + q.words.join("，") + "。 ";
         if (q.word) readText += "请用词造句：" + q.word + "。 ";
-        if (q.sents) readText += "排列顺序：" + q.sents.join("。 ");
+        if (Array.isArray(q.sents))
+          readText += "排列顺序：" + q.sents.join("。 ");
         if (readText) speak(readText);
       }
 
+      function updateTextAnswer(qid, value) {
+        const qidNum = Number(qid);
+        const question = QUESTION_BY_ID.get(qidNum);
+        if (!question || (question.type !== "write" && question.type !== "free"))
+          return;
+        const safeValue = sanitizeAnswerForQuestion(question, value);
+        answers[qidNum] = safeValue === undefined ? "" : safeValue;
+        saveState();
+      }
+
       function selectAnswer(qid, val, el) {
-        answers[qid] = val;
+        const qidNum = Number(qid);
+        const question = QUESTION_BY_ID.get(qidNum);
+        const safeValue = sanitizeAnswerForQuestion(question, val);
+        if (safeValue === undefined) return;
+        answers[qidNum] = safeValue;
         if (el) {
           const parent = el.parentElement;
           parent
@@ -3245,37 +3574,44 @@
       }
 
       function selectOrderAnswer(qid) {
+        const qidNum = Number(qid);
+        const question = QUESTION_BY_ID.get(qidNum);
+        if (!question || question.type !== "order") return;
         const sels = document.querySelectorAll(".order-select");
         const vals = Array.from(sels).map((s) => s.value);
         if (vals.every((v) => v)) {
-          answers[qid] = vals.join("");
+          const safeValue = sanitizeAnswerForQuestion(question, vals.join(""));
+          if (safeValue === undefined) return;
+          answers[qidNum] = safeValue;
           saveState();
         }
       }
 
       function goQuestion(idx) {
         if (idx < 0 || idx >= ALL_Q.length) return;
+        const sec = SECTIONS[currentSection];
+        if (idx < sec.start || idx >= sec.end) return;
         const targetQId = ALL_Q[idx].id;
         if (skippedQs.has(targetQId)) return; // Prevents going to locked question
 
         const currentQId = ALL_Q[currentIdx].id;
-        const qTime = Math.floor((Date.now() - qStartTime) / 1000);
+        const qTime = Math.floor((monotonicNow() - qStartTime) / 1000);
         qTimes[currentQId] = (qTimes[currentQId] || 0) + qTime;
 
         currentIdx = idx;
         highestIdx = Math.max(highestIdx, currentIdx);
-        qStartTime = Date.now();
+        qStartTime = monotonicNow();
         saveState();
         renderQuestion();
       }
 
       function finishSection() {
         // Save times
-        const qTime = Math.floor((Date.now() - qStartTime) / 1000);
+        const qTime = Math.floor((monotonicNow() - qStartTime) / 1000);
         qTimes[ALL_Q[currentIdx].id] =
           (qTimes[ALL_Q[currentIdx].id] || 0) + qTime;
         sectionTimes[currentSection] = Math.floor(
-          (Date.now() - sectionStartTime) / 1000,
+          (monotonicNow() - sectionStartTime) / 1000,
         );
 
         const order = ["listening", "reading", "writing"];
@@ -3286,8 +3622,8 @@
           const nextSec = order[curI + 1];
           currentSection = nextSec;
           currentIdx = SECTIONS[nextSec].start;
-          sectionStartTime = Date.now();
-          qStartTime = Date.now();
+          sectionStartTime = monotonicNow();
+          qStartTime = monotonicNow();
           saveState();
           updateSectionNav();
           renderQuestion();
@@ -3381,11 +3717,11 @@
         // Resume the timer and go back to writing section
         timerInterval = setInterval(() => {
           updateTimer();
-          if (Math.floor(Date.now() / 1000) % 5 === 0) saveState();
+          if (Math.floor(monotonicNow() / 1000) % 5 === 0) saveState();
         }, 1000);
         // Reset qStartTime for the current question
-        qStartTime = Date.now();
-        sectionStartTime = Date.now() - sectionTimes[currentSection] * 1000;
+        qStartTime = monotonicNow();
+        sectionStartTime = monotonicNow() - sectionTimes[currentSection] * 1000;
         renderQuestion();
       }
 
@@ -3417,7 +3753,6 @@
 
       // Helper: Thai explanation of why user's answer is wrong for MC/TF
       function getWhyWrongThai(q, userAns) {
-        const cAns = decodeAns(q.ans);
         if (q.type === "tf") {
           if (userAns === undefined || userAns === null)
             return "คุณไม่ได้ตอบข้อนี้";
@@ -3428,9 +3763,18 @@
         if (q.type === "mc" || q.type === "fill") {
           if (userAns === undefined || userAns === null)
             return "คุณไม่ได้เลือกคำตอบ";
-          const optsArr = q.opts || q.wordBank;
-          const labels = q.opts ? "ABCD" : "ABCDEF";
-          return `คุณเลือก ${labels[userAns]} "${optsArr[userAns]}" ซึ่งไม่ถูกต้อง`;
+          const optsArr = Array.isArray(q.opts)
+            ? q.opts
+            : Array.isArray(q.wordBank)
+              ? q.wordBank
+              : [];
+          const labels = Array.isArray(q.opts) ? "ABCD" : "ABCDEF";
+          const safeIdx = Number(userAns);
+          const picked =
+            Number.isInteger(safeIdx) && optsArr[safeIdx] !== undefined
+              ? sanitizePlainText(optsArr[safeIdx], 120)
+              : "-";
+          return `คุณเลือก ${labels[safeIdx] || "?"} "${picked}" ซึ่งไม่ถูกต้อง`;
         }
         if (q.type === "order") {
           if (!userAns) return "คุณไม่ได้เรียงลำดับ";
@@ -3462,7 +3806,7 @@
           const qt = qTimes[q.id] || 0;
           let correct = false;
 
-          const cAns = decodeAns(q.ans);
+          const cAns = getCanonicalAnswer(q.id);
           if (q.type === "tf") correct = ua === cAns;
           else if (q.type === "mc" || q.type === "fill") correct = ua === cAns;
           else if (q.type === "order") correct = ua === cAns;
@@ -3675,7 +4019,7 @@
           const barColor =
             pPct >= 70 ? "#10b981" : pPct >= 50 ? "#f59e0b" : "#ef4444";
           skillHtml += `<tr>
-            <td>${pName}</td>
+            <td>${escapeHTML(pName)}</td>
             <td style="text-align:center">${ps.correct}/${ps.total}</td>
             <td style="text-align:center" class="${pctCls}">${pPct}%</td>
             <td><div class="skill-bar-wrap"><div class="skill-bar-fill" style="width:${pPct}%;background:${barColor}"></div></div></td>
@@ -3729,8 +4073,8 @@
 
   ${skillHtml}
 
-  <div class="feedback-card strength"><h4 style="color:var(--green)">🌟 จุดเด่น (Strengths)</h4><ul>${strengths.map((s) => "<li>" + s + "</li>").join("")}</ul></div>
-  <div class="feedback-card improve"><h4 style="color:var(--red)">📈 จุดที่ควรพัฒนา (Areas for Improvement)</h4><ul>${improvements.map((s) => "<li>" + s + "</li>").join("")}</ul></div>
+  <div class="feedback-card strength"><h4 style="color:var(--green)">🌟 จุดเด่น (Strengths)</h4><ul>${strengths.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
+  <div class="feedback-card improve"><h4 style="color:var(--red)">📈 จุดที่ควรพัฒนา (Areas for Improvement)</h4><ul>${improvements.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
 
   <div style="text-align:center;margin:20px 0">
     <button class="tts-btn" style="font-size:1em;padding:12px 24px" onclick="speak('你的HSK四级模拟考试总分${totalScore}分，满分三百分。听力${listenScore}分，阅读${readScore}分，书写${writeScore}分。${passed ? "恭喜你通过了！" : "继续加油！"}')">🔊 ฟังรายงานผล</button>
@@ -3782,33 +4126,51 @@
                 ? "correct"
                 : "wrong";
           const diff = getDifficulty(q);
+          const safeExp = escapeHTML(q.exp);
+          const safeReviewQid = clampInt(q.id, 0, ALL_Q.length, 0);
+          const safeReviewTime = clampInt(qTimes[q.id] || 0, 0, 7200, 0);
 
           h += `<div class="review-card ${cls}">
       <div class="rev-header">
-        <span class="q-num">${q.id}</span>
+        <span class="q-num">${safeReviewQid}</span>
         <span class="rev-icon">${icon}</span>
-        <span class="rev-difficulty ${diff.cls}">${diff.label}</span>
-        <span class="rev-time">${qTimes[q.id] || 0}s</span>
+        <span class="rev-difficulty ${escapeHTML(diff.cls)}">${escapeHTML(diff.label)}</span>
+        <span class="rev-time">${safeReviewTime}s</span>
       </div>`;
 
           if (q.audio)
-            h += `<p class="rev-text">${q.audio.replace(/\n/g, "<br>")}</p>`;
-          if (q.passage) h += `<p class="rev-text">${q.passage}</p>`;
-          if (q.stmt) h += `<div class="q-statement">★ ${q.stmt}</div>`;
-          if (q.question) h += `<div class="q-statement">★ ${q.question}</div>`;
-          if (q.text) h += `<p class="rev-text">${q.text}</p>`;
-          if (q.words)
-            h += `<p class="rev-text">词语：${q.words.join("　")}</p>`;
-          if (q.word) h += `<p class="rev-text">关键词：${q.word}</p>`;
+            h += `<p class="rev-text">${escapeHTMLWithBreaks(q.audio)}</p>`;
+          if (q.passage) h += `<p class="rev-text">${escapeHTMLWithBreaks(q.passage)}</p>`;
+          if (q.stmt) h += `<div class="q-statement">★ ${escapeHTML(q.stmt)}</div>`;
+          if (q.question)
+            h += `<div class="q-statement">★ ${escapeHTML(q.question)}</div>`;
+          if (q.text) h += `<p class="rev-text">${escapeHTML(q.text)}</p>`;
+          if (Array.isArray(q.words))
+            h += `<p class="rev-text">词语：${q.words.map((w) => escapeHTML(w)).join("　")}</p>`;
+          if (q.word) h += `<p class="rev-text">关键词：${escapeHTML(q.word)}</p>`;
 
           // Show answer info
-          const cAns = decodeAns(q.ans);
+          const cAns = getCanonicalAnswer(q.id);
           if (q.type === "tf") {
             h += `<p class="rev-ans">คำตอบของคุณ：<b>${q._userAns === true ? "✓ ถูก (对)" : q._userAns === false ? "✗ ผิด (错)" : "ไม่ได้ตอบ"}</b> ｜ คำตอบที่ถูก：<b>${cAns ? "✓ ถูก (对)" : "✗ ผิด (错)"}</b></p>`;
           } else if (q.type === "mc" || q.type === "fill") {
-            const labels = q.opts ? "ABCD" : "ABCDEF";
-            const optsArr = q.opts || q.wordBank;
-            h += `<p class="rev-ans">คำตอบของคุณ：<b>${q._userAns !== undefined && q._userAns !== null && optsArr[q._userAns] ? labels[q._userAns] + " " + escapeHTML(optsArr[q._userAns]) : "ไม่ได้ตอบ"}</b> ｜ คำตอบที่ถูก：<b>${labels[cAns]} ${escapeHTML(optsArr[cAns])}</b></p>`;
+            const labels = Array.isArray(q.opts) ? "ABCD" : "ABCDEF";
+            const optsArr = Array.isArray(q.opts)
+              ? q.opts
+              : Array.isArray(q.wordBank)
+                ? q.wordBank
+                : [];
+            const userIdx = Number(q._userAns);
+            const correctIdx = Number(cAns);
+            const userText =
+              Number.isInteger(userIdx) && optsArr[userIdx] !== undefined
+                ? `${labels[userIdx] || "?"} ${escapeHTML(optsArr[userIdx])}`
+                : "ไม่ได้ตอบ";
+            const correctText =
+              Number.isInteger(correctIdx) && optsArr[correctIdx] !== undefined
+                ? `${labels[correctIdx] || "?"} ${escapeHTML(optsArr[correctIdx])}`
+                : "-";
+            h += `<p class="rev-ans">คำตอบของคุณ：<b>${userText}</b> ｜ คำตอบที่ถูก：<b>${correctText}</b></p>`;
           } else if (q.type === "order") {
             h += `<p class="rev-ans">คำตอบของคุณ：<b>${escapeHTML(q._userAns) || "ไม่ได้ตอบ"}</b> ｜ คำตอบที่ถูก：<b>${escapeHTML(cAns)}</b></p>`;
           } else if (q.type === "write") {
@@ -3821,25 +4183,25 @@
           if (isSkipped) {
             h += `<div class="rev-exp-box skipped">
               <h5>⏭️ ข้อนี้ถูกข้ามเพราะหมดเวลา</h5>
-              <div class="why-correct">✅ คำตอบที่ถูกต้อง: ${q.exp}</div>
+              <div class="why-correct">✅ คำตอบที่ถูกต้อง: ${safeExp}</div>
               <div class="exp-detail">💡 เคล็ดลับ: ฝึกตอบให้เร็วขึ้นโดยจับคำสำคัญ (keywords) ในโจทย์</div>
             </div>`;
           } else if (isUnanswered) {
             h += `<div class="rev-exp-box skipped">
               <h5>⚠️ ไม่ได้ตอบข้อนี้</h5>
-              <div class="why-correct">✅ คำตอบที่ถูกต้อง: ${q.exp}</div>
+              <div class="why-correct">✅ คำตอบที่ถูกต้อง: ${safeExp}</div>
               <div class="exp-detail">💡 ในการสอบจริง ควรตอบทุกข้อแม้ไม่มั่นใจ เพราะไม่มีคะแนนติดลบ</div>
             </div>`;
           } else if (q._correct) {
             h += `<div class="rev-exp-box correct">
               <h5>✅ ตอบถูก! เก่งมาก!</h5>
-              <div class="why-correct">${q.exp}</div>
+              <div class="why-correct">${safeExp}</div>
             </div>`;
           } else {
             h += `<div class="rev-exp-box wrong">
               <h5>❌ ตอบผิด</h5>
-              <div class="why-wrong">🔴 ทำไมผิด: ${getWhyWrongThai(q, q._userAns)}</div>
-              <div class="why-correct">🟢 คำตอบที่ถูก: ${q.exp}</div>
+              <div class="why-wrong">🔴 ทำไมผิด: ${escapeHTML(getWhyWrongThai(q, q._userAns))}</div>
+              <div class="why-correct">🟢 คำตอบที่ถูก: ${safeExp}</div>
               <div class="exp-detail">💡 จดจำจุดนี้ไว้ แล้วฝึกทำข้อแบบเดียวกันอีกครั้ง</div>
             </div>`;
           }
@@ -3851,7 +4213,9 @@
 
       // Initialize
       function checkName() {
-        const input = document.getElementById("userNameInput").value.trim();
+        const inputEl = document.getElementById("userNameInput");
+        const input = sanitizeUserName(inputEl.value);
+        if (inputEl.value !== input) inputEl.value = input;
         const btn = document.getElementById("btnStart");
         btn.disabled = input.length === 0;
       }
@@ -3885,13 +4249,15 @@
           )
         ) {
           document.getElementById("resumeModalOverlay").remove();
-          localStorage.removeItem("hsk4_exam_state");
+          localStorage.removeItem(STORAGE_KEY);
           answers = {};
           qTimes = {};
           currentIdx = 0;
           currentSection = "listening";
+          sectionTimes = { listening: 0, reading: 0, writing: 0 };
           skippedQs = new Set();
           highestIdx = 0;
+          userName = "";
           document.getElementById("userNameInput").value = "";
           checkName();
         }
@@ -3907,17 +4273,22 @@
 
       function startExam(isResume = false) {
         primeTTS();
+        const userInputEl = document.getElementById("userNameInput");
 
         if (!isResume) {
-          userName = document.getElementById("userNameInput").value.trim();
+          userName = sanitizeUserName(userInputEl.value);
+          userInputEl.value = userName;
           if (!userName) {
             alert("กรุณากรอกชื่อก่อนเริ่มสอบ");
-            document.getElementById("userNameInput").focus();
+            userInputEl.focus();
             return;
           }
-          sectionStartTime = Date.now();
-          qStartTime = Date.now();
+          sectionStartTime = monotonicNow();
+          qStartTime = monotonicNow();
           saveState();
+        } else {
+          userName = sanitizeUserName(userName || userInputEl.value);
+          userInputEl.value = userName;
         }
 
         document.getElementById("page1").style.display = "none";
@@ -3926,7 +4297,7 @@
         timerInterval = setInterval(() => {
           updateTimer();
           // Auto-save every 5 seconds to keep timer roughly synced
-          if (Math.floor(Date.now() / 1000) % 5 === 0) {
+          if (Math.floor(monotonicNow() / 1000) % 5 === 0) {
             saveState();
           }
         }, 1000);
