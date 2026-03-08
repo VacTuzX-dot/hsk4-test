@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://code.responsivevoice.org https://*.responsivevoice.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' data: blob: https://*.responsivevoice.org https://translate.google.com https://translate.googleapis.com https://dict.youdao.com; connect-src 'self' https://*.responsivevoice.org https://translate.google.com https://translate.googleapis.com https://dict.youdao.com https://code.responsivevoice.org; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self';"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://code.responsivevoice.org https://*.responsivevoice.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' data: blob: https://*.responsivevoice.org; connect-src 'self' https://*.responsivevoice.org https://code.responsivevoice.org; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self';"
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>HSK 4 模拟考试 - 完整版</title>
@@ -1450,17 +1450,6 @@
       };
       const signStatePayload = (payload) =>
         hashFNV1a(`${STORAGE_SIG_SALT}|${JSON.stringify(payload)}`);
-      const IS_IOS = (() => {
-        if (typeof navigator === "undefined") return false;
-        return (
-          /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-        );
-      })();
-      const IS_MAC_DESKTOP = (() => {
-        if (typeof navigator === "undefined") return false;
-        return /Mac/i.test(navigator.platform || "") && !IS_IOS;
-      })();
       const safeRemoveElement = (el) => {
         if (!el) return;
         if (typeof el.remove === "function") {
@@ -2776,27 +2765,9 @@
         },
       };
 
-      // ========== TTS - Cross-platform robust implementation ==========
-      // Primary: Web Speech API (speechSynthesis)
-      // Fallback: remote audio stream for browsers/devices without usable voices
-
-      let _ttsVoicesLoaded = false;
-      let _ttsVoiceCache = null;
-      let _ttsKeepAlive = null;
-      let _ttsLoadPromise = null;
-      let _ttsUnlocked = false;
-      let _audioUnlocked = false;
+      // ========== TTS - ResponsiveVoice only ==========
       let _responsiveVoiceUnlocked = false;
-      let _ttsFallbackAudio = null;
       let _ttsSessionId = 0;
-
-      function canUseSpeechSynthesis() {
-        return (
-          typeof window !== "undefined" &&
-          "speechSynthesis" in window &&
-          typeof window.SpeechSynthesisUtterance !== "undefined"
-        );
-      }
 
       function canUseResponsiveVoice() {
         return (
@@ -2830,16 +2801,7 @@
         return false;
       }
 
-      function stopFallbackAudio() {
-        if (_ttsFallbackAudio) {
-          _ttsFallbackAudio.pause();
-          _ttsFallbackAudio.src = "";
-          _ttsFallbackAudio = null;
-        }
-      }
-
       function stopTTSPlayback() {
-        stopFallbackAudio();
         if (canUseResponsiveVoice()) {
           try {
             window.responsiveVoice.cancel();
@@ -2847,99 +2809,6 @@
             // ignore
           }
         }
-        if (canUseSpeechSynthesis()) {
-          const synth = window.speechSynthesis;
-          synth.cancel();
-        }
-        if (_ttsKeepAlive) {
-          clearInterval(_ttsKeepAlive);
-          _ttsKeepAlive = null;
-        }
-      }
-
-      function safeGetVoices() {
-        if (!canUseSpeechSynthesis()) return [];
-        try {
-          return window.speechSynthesis.getVoices() || [];
-        } catch (e) {
-          return [];
-        }
-      }
-
-      // Pre-load and cache voices (critical for Chromium and Safari)
-      function loadVoices() {
-        if (!canUseSpeechSynthesis()) return Promise.resolve(null);
-        if (_ttsVoicesLoaded) return Promise.resolve(_ttsVoiceCache);
-        if (_ttsLoadPromise) return _ttsLoadPromise;
-
-        const synth = window.speechSynthesis;
-        _ttsLoadPromise = new Promise((resolve) => {
-          let resolved = false;
-
-          function done(voices) {
-            if (resolved) return;
-            resolved = true;
-            _ttsVoicesLoaded = Array.isArray(voices) && voices.length > 0;
-            _ttsVoiceCache = pickBestVoice(voices);
-            _ttsLoadPromise = null;
-            resolve(_ttsVoiceCache);
-          }
-
-          function onVoicesReady() {
-            done(safeGetVoices());
-          }
-
-          const voices = safeGetVoices();
-          if (voices.length > 0) {
-            done(voices);
-            return;
-          }
-
-          if (typeof synth.addEventListener === "function") {
-            synth.addEventListener("voiceschanged", onVoicesReady, {
-              once: true,
-            });
-          } else {
-            synth.onvoiceschanged = onVoicesReady;
-          }
-
-          // Safety timeout: some browsers never fire voiceschanged
-          setTimeout(onVoicesReady, 1800);
-        });
-
-        return _ttsLoadPromise;
-      }
-
-      function pickBestVoice(voices) {
-        if (!voices || voices.length === 0) return null;
-
-        // Tier 1: Best natural Chinese voices across major OS/browser combos
-        let best = voices.find(
-          (v) =>
-            /^zh|^cmn/i.test(v.lang) &&
-            /Xiaoxiao|Yaoyao|Huihui|Ting-Ting|Tingting|Lili|Mei-Jia|Meijia|Yue|Yu-shu|Google.*普通话|Google.*cmn|Google.*Chinese|Microsoft.*Chinese|Siri.*Chinese/i.test(
-              v.name,
-            ),
-        );
-
-        // Tier 2: zh-CN first
-        if (!best) {
-          best = voices.find((v) => /^zh-CN$/i.test(v.lang));
-        }
-
-        // Tier 3: any zh/cmn voice
-        if (!best) {
-          best = voices.find((v) => /^zh|^cmn/i.test(v.lang));
-        }
-
-        // Tier 4: language/name contains Chinese tags
-        if (!best) {
-          best = voices.find((v) =>
-            /cmn|chinese|zhongwen|putonghua/i.test(v.lang + v.name),
-          );
-        }
-
-        return best || null;
       }
 
       // Split long text into chunks to avoid browser cutoff on long utterances
@@ -2985,70 +2854,6 @@
         }
 
         return result;
-      }
-
-      function ensureVoiceSelected(utterance) {
-        if (_ttsVoiceCache) {
-          utterance.voice = _ttsVoiceCache;
-          return;
-        }
-        const v = pickBestVoice(safeGetVoices());
-        if (v) {
-          _ttsVoiceCache = v;
-          utterance.voice = v;
-        }
-      }
-
-      // iOS Safari often needs a user-gesture unlock before reliable playback.
-      function unlockTTS() {
-        if (_ttsUnlocked || !canUseSpeechSynthesis()) return;
-        _ttsUnlocked = true;
-
-        try {
-          const synth = window.speechSynthesis;
-          const u = new SpeechSynthesisUtterance("。");
-          u.volume = 0;
-          u.rate = 1;
-          u.pitch = 1;
-          synth.cancel();
-          synth.speak(u);
-          setTimeout(() => synth.cancel(), 120);
-        } catch (e) {
-          // ignore unlock failure; we still continue with best effort
-        }
-      }
-
-      // Android browsers may require a gesture-gated audio unlock before media playback.
-      function unlockAudioPlayback() {
-        if (_audioUnlocked) return;
-        _audioUnlocked = true;
-
-        try {
-          const AudioCtx = window.AudioContext || window.webkitAudioContext;
-          if (!AudioCtx) return;
-          const ctx = new AudioCtx();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          gain.gain.value = 0.00001;
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          if (ctx.state === "suspended") {
-            const resumed = ctx.resume();
-            if (resumed && typeof resumed.catch === "function") {
-              resumed.catch(() => {});
-            }
-          }
-          osc.start();
-          osc.stop(ctx.currentTime + 0.01);
-          setTimeout(() => {
-            const closed = ctx.close();
-            if (closed && typeof closed.catch === "function") {
-              closed.catch(() => {});
-            }
-          }, 180);
-        } catch (e) {
-          // ignore unlock failure; best effort only
-        }
       }
 
       function unlockResponsiveVoice() {
@@ -3159,166 +2964,6 @@
         return true;
       }
 
-      async function playChunkViaFallbackAudio(chunk, sessionId) {
-        const q = encodeURIComponent(chunk);
-        const urls = [
-          `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=zh-CN&q=${q}`,
-          `https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=zh-CN&q=${q}`,
-          `https://dict.youdao.com/dictvoice?type=2&audio=${q}`,
-        ];
-
-        for (const url of urls) {
-          if (sessionId !== _ttsSessionId) return false;
-          try {
-            await new Promise((resolve, reject) => {
-              const audio = new Audio();
-              _ttsFallbackAudio = audio;
-              let done = false;
-
-              function finish(ok) {
-                if (done) return;
-                done = true;
-                clearTimeout(timeoutId);
-                audio.pause();
-                audio.onended = null;
-                audio.onerror = null;
-                audio.src = "";
-                if (_ttsFallbackAudio === audio) _ttsFallbackAudio = null;
-                if (ok) resolve(true);
-                else reject(new Error("audio-fallback-failed"));
-              }
-
-              const timeoutId = setTimeout(() => finish(false), 12000);
-              audio.preload = "auto";
-              audio.playsInline = true;
-              audio.setAttribute("playsinline", "");
-              audio.setAttribute("webkit-playsinline", "");
-              audio.muted = false;
-              audio.volume = 1;
-              audio.src = url;
-              audio.onended = () => finish(true);
-              audio.onerror = () => finish(false);
-              audio.load();
-
-              const playPromise = audio.play();
-              if (playPromise && typeof playPromise.catch === "function") {
-                playPromise.catch(() => finish(false));
-              }
-            });
-            return true;
-          } catch (e) {
-            // try next provider
-          }
-        }
-        return false;
-      }
-
-      async function speakWithAudioFallback(text, sessionId) {
-        const chunks = splitTextForTTS(text);
-        for (const chunk of chunks) {
-          if (sessionId !== _ttsSessionId) return false;
-          const ok = await playChunkViaFallbackAudio(chunk, sessionId);
-          if (!ok) return false;
-        }
-        return true;
-      }
-
-      async function speakWithSpeechSynthesis(text, sessionId) {
-        if (!canUseSpeechSynthesis()) return false;
-
-        // Keep user-gesture context on mobile; load voices asynchronously in background.
-        if (!_ttsVoicesLoaded && !_ttsLoadPromise) loadVoices();
-        if (sessionId !== _ttsSessionId) return false;
-
-        const synth = window.speechSynthesis;
-        const chunks = splitTextForTTS(text);
-        if (chunks.length === 0) return false;
-
-        return new Promise((resolve) => {
-          let chunkIndex = 0;
-
-          if (_ttsKeepAlive) clearInterval(_ttsKeepAlive);
-          _ttsKeepAlive = setInterval(() => {
-            if (sessionId !== _ttsSessionId) {
-              clearInterval(_ttsKeepAlive);
-              _ttsKeepAlive = null;
-              return;
-            }
-            if (synth.paused) synth.resume();
-          }, 4000);
-
-          function finish(ok) {
-            if (_ttsKeepAlive) {
-              clearInterval(_ttsKeepAlive);
-              _ttsKeepAlive = null;
-            }
-            resolve(ok);
-          }
-
-          function speakNextChunk() {
-            if (sessionId !== _ttsSessionId) {
-              finish(false);
-              return;
-            }
-
-            if (chunkIndex >= chunks.length) {
-              finish(true);
-              return;
-            }
-
-            const chunk = chunks[chunkIndex];
-            const u = new SpeechSynthesisUtterance(chunk);
-            u.lang = "zh-CN";
-            u.rate = 0.9;
-            u.pitch = 1.1;
-            ensureVoiceSelected(u);
-
-            let completed = false;
-            const watchdogMs = Math.max(
-              2500,
-              Math.min(14000, chunk.length * 140),
-            );
-
-            function moveNext(success) {
-              if (completed) return;
-              completed = true;
-              clearTimeout(watchdogId);
-              if (!success) {
-                finish(false);
-                return;
-              }
-              chunkIndex++;
-              setTimeout(speakNextChunk, 70);
-            }
-
-            u.onend = () => moveNext(true);
-            u.onerror = (e) => {
-              console.warn("TTS chunk error:", e && e.error ? e.error : e);
-              moveNext(false);
-            };
-
-            const watchdogId = setTimeout(() => {
-              // Safari/Chromium can miss onend occasionally; fail this attempt
-              try {
-                synth.cancel();
-              } catch (e) {
-                // ignore
-              }
-              moveNext(false);
-            }, watchdogMs);
-
-            try {
-              synth.speak(u);
-            } catch (e) {
-              moveNext(false);
-            }
-          }
-
-          // Chromium benefits from delay after cancel; iOS works better without it.
-          setTimeout(speakNextChunk, IS_IOS ? 0 : 220);
-        });
-      }
-
       async function speak(text, force = false) {
         const content = String(text || "").trim();
         if (!content) return;
@@ -3327,44 +2972,13 @@
         primeTTS();
         const sessionId = ++_ttsSessionId;
         stopTTSPlayback();
-        const preferNativeFirst = IS_IOS || IS_MAC_DESKTOP;
-
-        if (preferNativeFirst) {
-          const usedNative = await speakWithSpeechSynthesis(content, sessionId);
-          if (sessionId !== _ttsSessionId || usedNative) return;
-
-          stopTTSPlayback();
-          const usedResponsive = await speakWithResponsiveVoice(
-            content,
-            sessionId,
-          );
-          if (sessionId !== _ttsSessionId || usedResponsive) return;
-        } else {
-          const usedResponsive = await speakWithResponsiveVoice(
-            content,
-            sessionId,
-          );
-          if (sessionId !== _ttsSessionId || usedResponsive) return;
-
-          stopTTSPlayback();
-          const usedNative = await speakWithSpeechSynthesis(content, sessionId);
-          if (sessionId !== _ttsSessionId || usedNative) return;
-        }
-
-        stopTTSPlayback();
-        const usedFallback = await speakWithAudioFallback(content, sessionId);
-        if (!usedFallback && sessionId === _ttsSessionId) {
-          console.warn("TTS is unavailable on this browser/device.");
-        }
+        const usedResponsive = await speakWithResponsiveVoice(content, sessionId);
+        if (sessionId !== _ttsSessionId || usedResponsive) return;
+        console.warn("ResponsiveVoice is unavailable on this browser/device.");
       }
 
       function primeTTS() {
-        unlockAudioPlayback();
         unlockResponsiveVoice();
-        if (canUseSpeechSynthesis()) {
-          unlockTTS();
-          if (!_ttsVoicesLoaded && !_ttsLoadPromise) loadVoices();
-        }
       }
 
       // Warm up on first user interaction (important on iOS/Android)
@@ -3376,20 +2990,6 @@
           });
         },
       );
-
-      // Initialize voice loading immediately
-      if (canUseSpeechSynthesis()) {
-        loadVoices();
-
-        // Some mobile browsers pause speech when tab/background changes
-        document.addEventListener("visibilitychange", () => {
-          if (!document.hidden && canUseSpeechSynthesis()) {
-            const synth = window.speechSynthesis;
-            if (synth.paused) synth.resume();
-            if (!_ttsVoicesLoaded) loadVoices();
-          }
-        });
-      }
 
       // Timer with per-question auto-skip
       function updateTimer() {
