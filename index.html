@@ -1457,6 +1457,10 @@
           (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
         );
       })();
+      const IS_MAC_DESKTOP = (() => {
+        if (typeof navigator === "undefined") return false;
+        return /Mac/i.test(navigator.platform || "") && !IS_IOS;
+      })();
       const safeRemoveElement = (el) => {
         if (!el) return;
         if (typeof el.remove === "function") {
@@ -2802,6 +2806,30 @@
         );
       }
 
+      function hasActiveTextSelection() {
+        try {
+          const sel =
+            typeof window !== "undefined" && window.getSelection
+              ? window.getSelection()
+              : null;
+          if (sel && String(sel).trim().length > 0) return true;
+
+          const el = document.activeElement;
+          if (
+            el &&
+            (el.tagName === "INPUT" || el.tagName === "TEXTAREA") &&
+            typeof el.selectionStart === "number" &&
+            typeof el.selectionEnd === "number" &&
+            el.selectionEnd > el.selectionStart
+          ) {
+            return true;
+          }
+        } catch (e) {
+          // ignore selection check errors
+        }
+        return false;
+      }
+
       function stopFallbackAudio() {
         if (_ttsFallbackAudio) {
           _ttsFallbackAudio.pause();
@@ -3100,6 +3128,13 @@
               if (finished) return;
               finished = true;
               clearTimeout(timeoutId);
+              if (!status && canUseResponsiveVoice()) {
+                try {
+                  window.responsiveVoice.cancel();
+                } catch (e) {
+                  // ignore
+                }
+              }
               resolve(status);
             }
 
@@ -3284,18 +3319,21 @@
         });
       }
 
-      async function speak(text) {
+      async function speak(text, force = false) {
         const content = String(text || "").trim();
         if (!content) return;
+        if (!force && hasActiveTextSelection()) return;
 
         primeTTS();
         const sessionId = ++_ttsSessionId;
         stopTTSPlayback();
+        const preferNativeFirst = IS_IOS || IS_MAC_DESKTOP;
 
-        if (IS_IOS) {
+        if (preferNativeFirst) {
           const usedNative = await speakWithSpeechSynthesis(content, sessionId);
           if (sessionId !== _ttsSessionId || usedNative) return;
 
+          stopTTSPlayback();
           const usedResponsive = await speakWithResponsiveVoice(
             content,
             sessionId,
@@ -3308,10 +3346,12 @@
           );
           if (sessionId !== _ttsSessionId || usedResponsive) return;
 
+          stopTTSPlayback();
           const usedNative = await speakWithSpeechSynthesis(content, sessionId);
           if (sessionId !== _ttsSessionId || usedNative) return;
         }
 
+        stopTTSPlayback();
         const usedFallback = await speakWithAudioFallback(content, sessionId);
         if (!usedFallback && sessionId === _ttsSessionId) {
           console.warn("TTS is unavailable on this browser/device.");
@@ -3478,7 +3518,7 @@
         h += `<div class="q-card">`;
 
         if (q.type === "tf") {
-          h += `<div class="q-top"><span class="q-num">${safeQid}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio)">🔊 播放录音</button></div>`;
+          h += `<div class="q-top"><span class="q-num">${safeQid}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio, true)">🔊 播放录音</button></div>`;
           h += `<div class="audio-text">${escapeHTML(q.audio)}</div>`;
           h += `<div class="q-statement">★ ${escapeHTML(q.stmt)}</div>`;
           h += `<div class="tf-opts">
@@ -3488,7 +3528,7 @@
         } else if (q.type === "mc") {
           const mcOptions = Array.isArray(q.opts) ? q.opts : [];
           const labels = mcOptions.length <= 4 ? "ABCD" : "ABCDEF";
-          h += `<div class="q-top"><span class="q-num">${safeQid}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio||ALL_Q[${currentIdx}].passage)">🔊 播放</button></div>`;
+          h += `<div class="q-top"><span class="q-num">${safeQid}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio||ALL_Q[${currentIdx}].passage, true)">🔊 播放</button></div>`;
           if (q.audio)
             h += `<div class="audio-text">${escapeHTMLWithBreaks(q.audio)}</div>`;
           if (q.passage) {
@@ -3614,7 +3654,7 @@
         if (q.word) readText += "请用词造句：" + q.word + "。 ";
         if (Array.isArray(q.sents))
           readText += "排列顺序：" + q.sents.join("。 ");
-        if (readText) speak(readText);
+        if (readText) speak(readText, true);
       }
 
       function updateTextAnswer(qid, value) {
@@ -4150,7 +4190,7 @@
   <div class="feedback-card improve"><h4 style="color:var(--red)">📈 จุดที่ควรพัฒนา (Areas for Improvement)</h4><ul>${improvements.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
 
   <div style="text-align:center;margin:20px 0">
-    <button class="tts-btn" style="font-size:1em;padding:12px 24px" onclick="speak('你的HSK四级模拟考试总分${totalScore}分，满分三百分。听力${listenScore}分，阅读${readScore}分，书写${writeScore}分。${passed ? "恭喜你通过了！" : "继续加油！"}')">🔊 ฟังรายงานผล</button>
+    <button class="tts-btn" style="font-size:1em;padding:12px 24px" onclick="speak('你的HSK四级模拟考试总分${totalScore}分，满分三百分。听力${listenScore}分，阅读${readScore}分，书写${writeScore}分。${passed ? "恭喜你通过了！" : "继续加油！"}', true)">🔊 ฟังรายงานผล</button>
   </div>
 
   <h3 style="margin:30px 0 15px;text-align:center">📝 เฉลยคำตอบโดยละเอียด</h3>
