@@ -801,6 +801,36 @@
       /* Results */
       .results-panel {
         animation: fadeIn 0.5s;
+        color: var(--txt);
+      }
+      .results-panel .summary-callout {
+        margin: 14px auto 12px;
+        max-width: 720px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        text-align: left;
+        line-height: 1.65;
+      }
+      .results-panel .summary-callout.pass {
+        background: #ecfdf5;
+        border-color: #6ee7b7;
+        color: #14532d;
+      }
+      .results-panel .summary-callout.fail {
+        background: #fff1f2;
+        border-color: #fda4af;
+        color: #881337;
+      }
+      .results-panel .summary-note {
+        color: #4b2f2f;
+        font-size: 0.92em;
+      }
+      .results-panel .section-meta {
+        font-size: 0.82em;
+        color: #5a3f3f;
+        margin-top: 4px;
+        line-height: 1.5;
       }
       @keyframes fadeIn {
         from {
@@ -872,7 +902,7 @@
         margin: 5px 0;
         font-size: 0.88em;
         line-height: 1.6;
-        color: var(--txt2);
+        color: var(--txt);
       }
       /* Review */
       .review-tabs {
@@ -886,7 +916,7 @@
         border: 2px solid var(--card-border);
         border-radius: 10px;
         background: var(--card);
-        color: var(--txt2);
+        color: var(--txt);
         font-family: inherit;
         font-size: 0.9em;
         font-weight: 600;
@@ -922,13 +952,13 @@
         font-size: 1.2em;
       }
       .rev-time {
-        color: var(--txt2);
+        color: #5f4444;
         font-size: 0.8em;
         margin-left: auto;
       }
       .rev-text {
         font-size: 0.88em;
-        color: var(--txt2);
+        color: var(--txt);
         line-height: 1.7;
         margin: 6px 0;
       }
@@ -1061,7 +1091,7 @@
       }
       .grade-label {
         font-size: 0.9em;
-        color: var(--txt2);
+        color: var(--txt);
         margin-top: 4px;
       }
 
@@ -1086,7 +1116,7 @@
       }
       .score-off-card .max {
         font-size: 0.85em;
-        color: var(--txt2);
+        color: #5a3f3f;
       }
       .score-off-card .sec-label {
         font-size: 0.85em;
@@ -3722,11 +3752,22 @@
           strengths.push(
             "👏 สำเร็จ! ทำข้อสอบ HSK4 ครบทุกข้อ — การลงมือทำคือก้าวแรกที่ดี สู้ต่อไป!",
           );
+        if (!improvements.length)
+          improvements.push(
+            "📈 ผลรวมอยู่ในเกณฑ์ดีแล้ว ให้คงความสม่ำเสมอและทบทวนจุดเล็ก ๆ ที่พลาดเพื่อดันคะแนนให้สูงขึ้น",
+          );
 
         // Score ring color
         const color = passed ? "#00c897" : "#ef4444";
         const circ = 2 * Math.PI * 65;
         const off = circ - (totalScore / 300) * circ;
+        const scoreGap = Math.max(0, 180 - totalScore);
+        const summaryHeadline = passed
+          ? "ผ่านเกณฑ์ HSK 4 แล้ว"
+          : `ยังไม่ผ่านเกณฑ์ในครั้งนี้ (ขาดอีก ${scoreGap} คะแนน)`;
+        const summaryAdvice = passed
+          ? "ผลงานโดยรวมดีมาก แนะนำรักษาความแม่นยำในพาร์ตที่ได้ต่ำกว่า 70% เพื่อดันคะแนนรวมให้สูงขึ้นอีก"
+          : "โฟกัสพาร์ตที่ได้ต่ำกว่า 60% ก่อน แล้วฝึกชุดสั้นแบบจับเวลา 20-30 นาทีต่อวัน จะเห็นพัฒนาการเร็วขึ้น";
 
         // Build Skill Analysis table
         let skillHtml = `<div class="skill-analysis"><h4>📊 การวิเคราะห์ตามทักษะ</h4>
@@ -3754,48 +3795,53 @@
 
         document.getElementById("questionArea").innerHTML = `
 <div class="results-panel">
-  <h2 style="text-align:center;margin-bottom:6px">📊 HSK 4 รายงานผลสอบ</h2>
-  <h3 style="text-align:center;color:var(--accent);margin-bottom:16px">ผู้เข้าสอบ: ${escapeHTML(document.getElementById("userNameInput").value || "ไม่ระบุชื่อ")}</h3>
+  <h2 style="text-align:center;margin-bottom:6px">📊 สรุปผลสอบ HSK 4</h2>
+  <h3 style="text-align:center;color:var(--accent);margin-bottom:14px">ผู้เข้าสอบ: ${escapeHTML(document.getElementById("userNameInput").value || "ไม่ระบุชื่อ")}</h3>
+
+  <div class="summary-callout ${passed ? "pass" : "fail"}">
+    <strong>${summaryHeadline}</strong><br />
+    ${summaryAdvice}
+  </div>
 
   <div class="score-ring"><svg width="160" height="160">
     <circle cx="80" cy="80" r="65" fill="none" stroke="var(--glass)" stroke-width="10"/>
     <circle cx="80" cy="80" r="65" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}" style="transition:stroke-dashoffset 1.5s ease"/>
   </svg><div class="score-val" style="color:${color}">${totalScore}</div></div>
-  <p style="text-align:center;font-size:0.9em;color:var(--txt2)">คะแนนรวม ${totalScore} / 300 คะแนน</p>
+  <p class="summary-note" style="text-align:center">คะแนนรวม ${totalScore} / 300 คะแนน</p>
   <div style="text-align:center;margin:10px 0">
-    <span class="grade-badge ${passed ? "pass" : "fail"}">${passed ? "🏆 ผ่าน" : "❌ ไม่ผ่าน"} (เกณฑ์ผ่าน 180 คะแนน)</span>
+    <span class="grade-badge ${passed ? "pass" : "fail"}">${passed ? "🏆 ผ่านเกณฑ์" : "❌ ไม่ผ่านเกณฑ์"} (เกณฑ์ผ่าน 180 คะแนน)</span>
   </div>
-  <p style="text-align:center;margin-bottom:4px" class="grade-label">${gradeEmoji} ระดับ: <strong>${gradeLabel}</strong></p>
-  <p style="text-align:center;color:var(--txt2);font-size:0.88em">เวลาที่ใช้ ${totalMin} นาที ${totalSec} วินาที · ตอบถูก ${totalC}/100 ข้อ${skippedCount > 0 ? " · ถูกข้าม " + skippedCount + " ข้อ" : ""}</p>
+  <p style="text-align:center;margin-bottom:4px" class="grade-label">${gradeEmoji} ระดับผลสอบ: <strong>${gradeLabel}</strong></p>
+  <p class="summary-note" style="text-align:center">เวลาที่ใช้ ${totalMin} นาที ${totalSec} วินาที · ตอบถูก ${totalC}/100 ข้อ${skippedCount > 0 ? " · ถูกข้าม " + skippedCount + " ข้อ" : ""}</p>
 
   <div class="score-official">
     <div class="score-off-card">
       <div class="sec-label">🎧 การฟัง</div>
       <div class="pts" style="color:${sColor(listenScore)}">${listenScore}</div>
       <div class="max">/ 100 คะแนน</div>
-      <div style="font-size:0.78em;color:var(--txt2);margin-top:4px">ตอบถูก ${listenC}/${listenT} ข้อ · เฉลี่ย ${avgListen} วิ/ข้อ</div>
+      <div class="section-meta">ตอบถูก ${listenC}/${listenT} ข้อ · เฉลี่ย ${avgListen} วิ/ข้อ</div>
       <div class="bar-wrap"><div class="bar-fill" style="width:${listenScore}%;background:${sColor(listenScore)}"></div></div>
     </div>
     <div class="score-off-card">
       <div class="sec-label">📖 การอ่าน</div>
       <div class="pts" style="color:${sColor(readScore)}">${readScore}</div>
       <div class="max">/ 100 คะแนน</div>
-      <div style="font-size:0.78em;color:var(--txt2);margin-top:4px">ตอบถูก ${readC}/${readT} ข้อ · เฉลี่ย ${avgRead} วิ/ข้อ</div>
+      <div class="section-meta">ตอบถูก ${readC}/${readT} ข้อ · เฉลี่ย ${avgRead} วิ/ข้อ</div>
       <div class="bar-wrap"><div class="bar-fill" style="width:${readScore}%;background:${sColor(readScore)}"></div></div>
     </div>
     <div class="score-off-card">
       <div class="sec-label">✍️ การเขียน</div>
       <div class="pts" style="color:${sColor(writeScore)}">${writeScore}</div>
       <div class="max">/ 100 คะแนน</div>
-      <div style="font-size:0.78em;color:var(--txt2);margin-top:4px">ตอบถูก ${writeC}/${writeT} ข้อ · เฉลี่ย ${avgWrite} วิ/ข้อ</div>
+      <div class="section-meta">ตอบถูก ${writeC}/${writeT} ข้อ · เฉลี่ย ${avgWrite} วิ/ข้อ</div>
       <div class="bar-wrap"><div class="bar-fill" style="width:${writeScore}%;background:${sColor(writeScore)}"></div></div>
     </div>
   </div>
 
   ${skillHtml}
 
-  <div class="feedback-card strength"><h4 style="color:var(--green)">🌟 จุดเด่น (Strengths)</h4><ul>${strengths.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
-  <div class="feedback-card improve"><h4 style="color:var(--red)">📈 จุดที่ควรพัฒนา (Areas for Improvement)</h4><ul>${improvements.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
+  <div class="feedback-card strength"><h4 style="color:var(--green)">🌟 จุดแข็งที่ทำได้ดี</h4><ul>${strengths.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
+  <div class="feedback-card improve"><h4 style="color:var(--red)">📈 จุดที่ควรโฟกัสต่อ</h4><ul>${improvements.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
 
   <div style="text-align:center;margin:20px 0">
     <button class="tts-btn" style="font-size:1em;padding:12px 24px" onclick="speak('你的HSK四级模拟考试总分${totalScore}分，满分三百分。听力${listenScore}分，阅读${readScore}分，书写${writeScore}分。${passed ? "恭喜你通过了！" : "继续加油！"}', true)">🔊 ฟังรายงานผล</button>
