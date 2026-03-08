@@ -1465,6 +1465,32 @@
         }
         if (el.parentNode) el.parentNode.removeChild(el);
       };
+      const bindTapEvent = (el, fn) => {
+        if (!el) return;
+        let touched = false;
+        const run = (e) => {
+          if (e) e.preventDefault();
+          fn();
+        };
+        el.addEventListener(
+          "touchend",
+          (e) => {
+            touched = true;
+            run(e);
+            setTimeout(() => {
+              touched = false;
+            }, 700);
+          },
+          { passive: false },
+        );
+        el.addEventListener("click", (e) => {
+          if (touched) {
+            e.preventDefault();
+            return;
+          }
+          run(e);
+        });
+      };
       const decodeAns = (encoded) => {
         if (typeof encoded !== "string") return encoded;
         try {
@@ -4270,6 +4296,45 @@
         btn.disabled = input.length === 0;
       }
 
+      function showInPageConfirm(message, confirmText = "ยืนยัน", cancelText = "ยกเลิก") {
+        return new Promise((resolve) => {
+          const existing = document.getElementById("customConfirmOverlay");
+          safeRemoveElement(existing);
+
+          const overlay = document.createElement("div");
+          overlay.className = "submit-overlay";
+          overlay.id = "customConfirmOverlay";
+          overlay.style.zIndex = "10050";
+          overlay.innerHTML = `
+            <div class="submit-modal" style="max-width:420px">
+              <h3 style="margin-bottom:10px">⚠️ ยืนยันการดำเนินการ</h3>
+              <p style="color:var(--txt2);line-height:1.6;margin-bottom:10px">${escapeHTML(message)}</p>
+              <button class="btn-submit-final confirm" id="customConfirmOk">${escapeHTML(confirmText)}</button>
+              <button class="btn-submit-final cancel" id="customConfirmCancel">${escapeHTML(cancelText)}</button>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+
+          let done = false;
+          const finish = (result) => {
+            if (done) return;
+            done = true;
+            safeRemoveElement(overlay);
+            resolve(result);
+          };
+
+          bindTapEvent(document.getElementById("customConfirmOk"), () =>
+            finish(true),
+          );
+          bindTapEvent(document.getElementById("customConfirmCancel"), () =>
+            finish(false),
+          );
+          overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) finish(false);
+          });
+        });
+      }
+
       function showResumeModal() {
         const overlay = document.createElement("div");
         overlay.className = "resume-modal-overlay";
@@ -4286,35 +4351,8 @@
         `;
         document.body.appendChild(overlay);
 
-        const bindTap = (el, fn) => {
-          if (!el) return;
-          let touched = false;
-          const run = (e) => {
-            if (e) e.preventDefault();
-            fn();
-          };
-          el.addEventListener(
-            "touchend",
-            (e) => {
-              touched = true;
-              run(e);
-              setTimeout(() => {
-                touched = false;
-              }, 700);
-            },
-            { passive: false },
-          );
-          el.addEventListener("click", (e) => {
-            if (touched) {
-              e.preventDefault();
-              return;
-            }
-            run(e);
-          });
-        };
-
-        bindTap(document.getElementById("resumeContinueBtn"), resumeExam);
-        bindTap(document.getElementById("resumeRestartBtn"), restartExam);
+        bindTapEvent(document.getElementById("resumeContinueBtn"), resumeExam);
+        bindTapEvent(document.getElementById("resumeRestartBtn"), restartExam);
       }
 
       function closeResumeModal() {
@@ -4327,9 +4365,11 @@
         startExam(true);
       }
 
-      function restartExam() {
-        const shouldReset = confirm(
+      async function restartExam() {
+        const shouldReset = await showInPageConfirm(
           "แน่ใจหรือไม่ที่จะลบข้อมูลเดิมที่ทำค้างไว้ทั้งหมด? (ข้อมูลเดิมจะไม่สามารถกู้คืนได้)",
+          "ยืนยันลบข้อมูล",
+          "ยกเลิก",
         );
         if (!shouldReset) return;
 
