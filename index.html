@@ -4328,11 +4328,9 @@
       }
 
       function restartExam() {
-        const shouldReset = IS_IOS
-          ? true
-          : confirm(
-              "แน่ใจหรือไม่ที่จะลบข้อมูลเดิมที่ทำค้างไว้ทั้งหมด? (ข้อมูลเดิมจะไม่สามารถกู้คืนได้)",
-            );
+        const shouldReset = confirm(
+          "แน่ใจหรือไม่ที่จะลบข้อมูลเดิมที่ทำค้างไว้ทั้งหมด? (ข้อมูลเดิมจะไม่สามารถกู้คืนได้)",
+        );
         if (!shouldReset) return;
 
         closeResumeModal();
