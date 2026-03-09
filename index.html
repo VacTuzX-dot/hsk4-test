@@ -9,10 +9,18 @@
     />
     <meta name="referrer" content="no-referrer" />
     <title>HSK 4 模拟考试 - 完整版</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="preload"
+      href="https://images.unsplash.com/photo-1547238899-b5fcc6adf701?q=80&w=3270&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+      as="image"
+    />
+    <link rel="modulepreload" href="https://esm.sh/google-tts-api" />
     <!-- Removed ResponsiveVoice script -->
     <style>
       * {
@@ -37,9 +45,23 @@
       }
       body {
         font-family: "Noto Sans SC", sans-serif;
-        background: var(--bg-grad) fixed;
+        background: url("https://images.unsplash.com/photo-1547238899-b5fcc6adf701?q=80&w=3270&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+          no-repeat center center fixed;
+        background-size: cover;
+        position: relative;
         color: var(--txt);
         min-height: 100vh;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: inherit;
+        filter: blur(8px) brightness(0.8);
+        z-index: -1;
       }
       .container {
         max-width: 800px;
@@ -918,20 +940,26 @@
         height: 160px;
         margin: 0 auto 16px;
         position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: grid;
+        place-items: center;
       }
       .score-ring svg {
         position: absolute;
-        top: 0;
-        left: 0;
+        inset: 0;
+        width: 100%;
+        height: 100%;
         transform: rotate(-90deg);
       }
       .score-val {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 2.2em;
         font-weight: 900;
-        z-index: 2; /* To put the number explicitly above the SVG ring just in case */
+        line-height: 1;
+        z-index: 2;
       }
       .stats-grid {
         display: grid;
@@ -1160,9 +1188,10 @@
         box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
       }
       .grade-badge.fail {
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        color: white;
-        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+        color: #9f1239;
+        border: 2px solid #fb7185;
+        box-shadow: 0 4px 15px rgba(244, 63, 94, 0.2);
       }
       .grade-label {
         font-size: 0.9em;
@@ -1977,7 +2006,7 @@
             <div class="info-box">
               <div class="icon">⏱️</div>
               <div class="label">เวลารวม</div>
-              <div class="value">105</div>
+              <div class="value">95</div>
               <div class="unit">นาที</div>
             </div>
             <div class="info-box">
@@ -2021,6 +2050,56 @@
               </tr>
             </tbody>
           </table>
+          <p
+            style="
+              margin-top: 10px;
+              font-size: 13px;
+              color: #6b7280;
+              line-height: 1.6;
+              text-align: left;
+            "
+          >
+            หมายเหตุ: ระบบจะเปิดช่วงทบทวนพาร์ทฟังเพิ่มเติม 3 นาที
+            ก่อนเข้าสู่พาร์ทอ่าน อัตโนมัติ
+          </p>
+        </div>
+
+        <div class="landing-card">
+          <div class="landing-card-title">⏱️ กติกาเวลา (สอบคอมพิวเตอร์)</div>
+          <ul
+            style="
+              font-size: 14px;
+              color: #1f2937;
+              line-height: 1.7;
+              padding-left: 20px;
+              text-align: left;
+            "
+          >
+            <li>
+              พาร์ทฟัง 30 นาที: เริ่มจากข้อ 1 ทันที และมีช่วงทบทวนคำตอบเพิ่ม 3
+              นาที
+            </li>
+            <li>
+              หมดเวลาพาร์ทฟัง ระบบจะล็อกคำตอบพาร์ทฟัง
+              และเข้าสู่พาร์ทอ่านอัตโนมัติ
+            </li>
+            <li>
+              พาร์ทอ่าน 40 นาที: ทำข้อไหนก่อนก็ได้ภายในพาร์ทนี้
+              แต่ห้ามข้ามไปพาร์ทอื่น
+            </li>
+            <li>
+              หมดเวลาพาร์ทอ่าน ระบบจะล็อกคำตอบ และเข้าสู่พาร์ทเขียนอัตโนมัติ
+            </li>
+            <li>
+              พาร์ทเขียน 25 นาที: เมื่อเวลาเป็น 00:00
+              ระบบจะส่งข้อสอบอัตโนมัติทันที
+            </li>
+            <li>
+              หากตอบครบทุกข้อของพาร์ทแล้ว สามารถกด "จบพาร์ท"
+              เพื่อไปพาร์ทถัดไปได้ทันที
+            </li>
+            <li>ห้ามย้อนกลับไปแก้พาร์ทที่หมดเวลาแล้วเด็ดขาด</li>
+          </ul>
         </div>
 
         <div class="landing-card">
@@ -2034,6 +2113,91 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="landing-card">
+          <div class="landing-card-title">
+            🚨 กฎข้อบังคับในการทำพาร์ท "การเขียน"
+          </div>
+          <p
+            style="
+              font-size: 14px;
+              color: #4b5563;
+              line-height: 1.6;
+              margin-bottom: 10px;
+            "
+          >
+            โปรดอ่านและทำความเข้าใจก่อนเริ่มการทดสอบ ระบบจะให้คะแนนดังต่อไปนี้:
+          </p>
+          <ul
+            style="
+              font-size: 14px;
+              color: #1f2937;
+              line-height: 1.6;
+              padding-left: 20px;
+              text-align: left;
+            "
+          >
+            <li style="margin-bottom: 8px">
+              <strong>เรียงประโยค:</strong> ต้องเรียงตัวอักษรให้ถูกต้องเป๊ะ
+              และห้ามลืมพิมพ์เครื่องหมายวรรคตอนภาษาจีน (<code
+                style="
+                  background: #f3f4f6;
+                  padding: 2px 4px;
+                  border-radius: 4px;
+                  color: #d97706;
+                "
+                >。</code
+              >
+              หรือ
+              <code
+                style="
+                  background: #f3f4f6;
+                  padding: 2px 4px;
+                  border-radius: 4px;
+                  color: #d97706;
+                "
+                >？</code
+              >
+              หรือ
+              <code
+                style="
+                  background: #f3f4f6;
+                  padding: 2px 4px;
+                  border-radius: 4px;
+                  color: #d97706;
+                "
+                >！</code
+              >) ท้ายประโยคเด็ดขาด
+            </li>
+            <li style="margin-bottom: 8px">
+              <strong>แต่งประโยค:</strong> ประโยคต้องยาวมากกว่าคำศัพท์บังคับ 4
+              ตัวอักษรขึ้นไป ต้องใช้ภาษาจีนเท่านั้น
+              และต้องตบท้ายประโยคด้วยเครื่องหมายวรรคตอนภาษาจีนเช่นเดียวกัน
+            </li>
+            <li>
+              ❌ <strong>ห้ามใช้:</strong> เครื่องหมายวรรคตอนของภาษาอังกฤษ (เช่น
+              <code
+                style="
+                  background: #f3f4f6;
+                  padding: 2px 4px;
+                  border-radius: 4px;
+                  color: #e11d48;
+                "
+                >.</code
+              >
+              หรือ
+              <code
+                style="
+                  background: #f3f4f6;
+                  padding: 2px 4px;
+                  border-radius: 4px;
+                  color: #e11d48;
+                "
+                >?</code
+              >) หากตรวจพบ ระบบจะให้ 0 คะแนนในข้อนั้นทันที
+            </li>
+          </ul>
         </div>
 
         <div class="landing-card">
@@ -2218,8 +2382,14 @@
       });
 
       // HSK 4 Full Exam Data - H41005 (100 questions)
-      // Time allocation: Listening 30min(45q)=40s/q, Reading 40min(40q)=60s/q, Writing 25min(15q)=100s/q
-      const SECTION_TIME = { listening: 1800, reading: 2400, writing: 1500 };
+      // Listening has an extra review window before moving to reading.
+      const LISTENING_AUDIO_TIME = 30 * 60;
+      const LISTENING_REVIEW_TIME = 3 * 60;
+      const SECTION_TIME = {
+        listening: LISTENING_AUDIO_TIME + LISTENING_REVIEW_TIME,
+        reading: 40 * 60,
+        writing: 25 * 60,
+      };
       const TIME_PER_Q = { listening: 40, reading: 60, writing: 100 };
 
       const HSK4 = {
@@ -3284,9 +3454,10 @@
       let timerInterval;
       let examFinished = false;
       let sectionTimes = { listening: 0, reading: 0, writing: 0 };
-      let skippedQs = new Set(); // questions auto-skipped by timeout
+      let skippedQs = new Set(); // kept for backward compatibility in review UI
       let highestIdx = 0; // can't go back past this
       let userName = "";
+      let listeningReviewNotified = false;
 
       // Save and Load State
       function saveState() {
@@ -3401,7 +3572,7 @@
             qTimes = state.qTimes;
             currentIdx = state.currentIdx;
             currentSection = state.currentSection;
-            skippedQs = state.skippedQs;
+            skippedQs = new Set();
             highestIdx = state.highestIdx;
             userName = state.userName;
             sectionTimes = state.sectionTimes;
@@ -3409,6 +3580,9 @@
             sectionStartTime =
               monotonicNow() - sectionTimes[currentSection] * 1000;
             qStartTime = monotonicNow();
+            listeningReviewNotified =
+              currentSection === "listening" &&
+              sectionTimes.listening >= LISTENING_AUDIO_TIME;
             if (shouldResign) saveState();
             return true;
           } catch (e) {
@@ -3426,7 +3600,7 @@
           icon: "🎧",
           start: 0,
           end: 45,
-          time: 1800,
+          time: SECTION_TIME.listening,
           color: "#d32f2f",
           parts: [
             { name: "第一部分：判断对错", from: 0, to: 10 },
@@ -3439,7 +3613,7 @@
           icon: "📖",
           start: 45,
           end: 85,
-          time: 2400,
+          time: SECTION_TIME.reading,
           color: "#d32f2f",
           parts: [
             { name: "第一部分：选词填空", from: 45, to: 55 },
@@ -3452,7 +3626,7 @@
           icon: "✍️",
           start: 85,
           end: 100,
-          time: 1500,
+          time: SECTION_TIME.writing,
           color: "#d32f2f",
           parts: [
             { name: "第一部分：完成句子", from: 85, to: 95 },
@@ -3710,15 +3884,49 @@
         },
       );
 
-      // Timer with per-question auto-skip
+      function isListeningReviewMode(elapsedOverride = null) {
+        if (currentSection !== "listening") return false;
+        const elapsed =
+          elapsedOverride === null
+            ? Math.floor((monotonicNow() - sectionStartTime) / 1000)
+            : elapsedOverride;
+        return elapsed >= LISTENING_AUDIO_TIME;
+      }
+
+      // Timer with section locks and timed transitions between parts
       function updateTimer() {
         if (examFinished) return;
         const sec = SECTIONS[currentSection];
         const elapsed = Math.floor((monotonicNow() - sectionStartTime) / 1000);
-        const remain = Math.max(0, sec.time - elapsed);
+        const inListeningReview = isListeningReviewMode(elapsed);
+        let remain = Math.max(0, sec.time - elapsed);
+        let timerLabel = "剩余时间";
+
+        if (currentSection === "listening") {
+          if (inListeningReview) {
+            timerLabel = "听力复查";
+            if (!listeningReviewNotified) {
+              listeningReviewNotified = true;
+              stopTTSPlayback();
+              qStartTime = monotonicNow();
+              const partNameEl = document.querySelector(".part-name");
+              if (partNameEl) {
+                partNameEl.textContent = "听力复查（可修改）";
+              }
+            }
+          } else {
+            timerLabel = "听力剩余";
+            remain = Math.max(0, LISTENING_AUDIO_TIME - elapsed);
+          }
+        }
+
         const m = Math.floor(remain / 60),
           s = remain % 60;
         const timerEl = document.getElementById("sectionTimer");
+        const timerLabelEl = document.getElementById("sectionTimerLabel");
+        if (timerLabelEl) {
+          timerLabelEl.textContent = timerLabel;
+        }
         if (timerEl) {
           timerEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
           timerEl.style.color =
@@ -3728,72 +3936,36 @@
                 ? "var(--gold)"
                 : "var(--txt)";
         }
-        // Per-question countdown
+        // Per-question elapsed display
         const avgTime = TIME_PER_Q[currentSection];
         const currentSessionElapsed = Math.floor(
           (monotonicNow() - qStartTime) / 1000,
         );
         const prevElapsed = qTimes[ALL_Q[currentIdx].id] || 0;
         const qElapsed = prevElapsed + currentSessionElapsed;
-        const qRemain = Math.max(0, avgTime - qElapsed);
+        const qRatio = avgTime > 0 ? qElapsed / avgTime : 0;
         const tColor =
-          qRemain <= 5
+          qRatio >= 1.5
             ? "var(--red)"
-            : qRemain <= 10
+            : qRatio >= 1
               ? "var(--gold)"
               : "var(--green)";
 
         const qTimerEl = document.getElementById("qTimer");
         if (qTimerEl) {
-          qTimerEl.textContent = `${qRemain}s`;
+          qTimerEl.textContent = `${qElapsed}s`;
           qTimerEl.style.color = tColor;
         }
-        // Update progress bar for question time
+        // Progress bar against suggested time per question
         const qBarEl = document.getElementById("qTimeBar");
         if (qBarEl) {
-          qBarEl.style.width = `${Math.max(0, (qRemain / avgTime) * 100)}%`;
+          qBarEl.style.width = `${Math.max(0, Math.min(100, qRatio * 100))}%`;
           qBarEl.style.background = tColor;
         }
-        // Auto-skip when per-question time runs out
-        if (qRemain <= 0 && !examFinished) {
-          autoSkipQuestion();
-        }
+
         // Auto finish section when section time runs out
         if (remain <= 0 && !examFinished) {
-          finishSection();
-        }
-      }
-
-      function autoSkipQuestion() {
-        const qId = ALL_Q[currentIdx].id;
-        skippedQs.add(qId);
-        const currentSessionElapsed = Math.floor(
-          (monotonicNow() - qStartTime) / 1000,
-        );
-        qTimes[qId] = (qTimes[qId] || 0) + currentSessionElapsed;
-
-        const sec = SECTIONS[currentSection];
-        let nextIdx = currentIdx + 1;
-        while (nextIdx < sec.end && skippedQs.has(ALL_Q[nextIdx].id)) {
-          nextIdx++;
-        }
-
-        if (nextIdx < sec.end) {
-          currentIdx = nextIdx;
-          highestIdx = Math.max(highestIdx, currentIdx);
-          qStartTime = monotonicNow();
-          saveState();
-          renderQuestion();
-
-          // Auto-play audio if in listening section
-          if (currentSection === "listening") {
-            setTimeout(() => {
-              const ttsBtn = document.querySelector(".tts-btn");
-              if (ttsBtn) ttsBtn.click();
-            }, 100);
-          }
-        } else {
-          finishSection();
+          finishSection("timeup");
         }
       }
 
@@ -3805,6 +3977,28 @@
         return "";
       }
 
+      function isAnsweredValue(value) {
+        if (value === undefined || value === null) return false;
+        if (typeof value === "string") return value.trim().length > 0;
+        return true;
+      }
+
+      function getSectionCompletion(secKey = currentSection) {
+        const sec = SECTIONS[secKey];
+        let answered = 0;
+        for (let i = sec.start; i < sec.end; i++) {
+          const qId = ALL_Q[i].id;
+          if (isAnsweredValue(answers[qId])) answered++;
+        }
+        const total = sec.end - sec.start;
+        return {
+          answered,
+          total,
+          complete: answered === total,
+          remaining: total - answered,
+        };
+      }
+
       // Render current question
       function renderQuestion() {
         const q = ALL_Q[currentIdx];
@@ -3814,6 +4008,13 @@
         const qNumInSec = currentIdx - secStart + 1;
         const totalInSec = secEnd - secStart;
         const partName = getPartName(currentIdx);
+        const inListeningReview = isListeningReviewMode();
+        const displayPartName =
+          currentSection === "listening" && inListeningReview
+            ? "听力复查（可修改）"
+            : partName;
+        const sectionCompletion = getSectionCompletion(currentSection);
+        const canFinishSection = sectionCompletion.complete;
         const avgTime = TIME_PER_Q[currentSection];
         const qid = Number(q.id);
         const sectionProgress = clampInt(
@@ -3828,12 +4029,12 @@
   <div class="q-header">
     <div class="q-progress-info">
       <span class="section-badge" style="background:${sec.color}20; color:${sec.color}">${escapeHTML(sec.icon)} ${escapeHTML(sec.name)}</span>
-      <span class="part-name">${escapeHTML(partName)}</span>
+      <span class="part-name">${escapeHTML(displayPartName)}</span>
     </div>
     <div class="q-counter">${qNumInSec} / ${totalInSec}</div>
   </div>
   <div class="q-timer-bar" style="background: transparent; padding: 0; margin-bottom: 8px;">
-    <div class="timer-item"><span class="timer-label">剩余时间</span><span class="timer-val" id="sectionTimer">--:--</span></div>
+    <div class="timer-item"><span class="timer-label" id="sectionTimerLabel">剩余时间</span><span class="timer-val" id="sectionTimer">--:--</span></div>
     <div class="timer-item"><span class="timer-label">本题用时</span><span class="timer-val" id="qTimer">0s</span></div>
     <div class="timer-item"><span class="timer-label">建议用时</span><span class="timer-val">${avgTime}s</span></div>
   </div>
@@ -3933,9 +4134,6 @@
         // Navigation buttons
         h += `<div class="nav-buttons">`;
         let prevIdx = currentIdx - 1;
-        while (prevIdx >= sec.start && skippedQs.has(ALL_Q[prevIdx].id)) {
-          prevIdx--;
-        }
         if (prevIdx >= sec.start) {
           h += `<button class="nav-btn-prev" onclick="goQuestion(${prevIdx})">← ข้อก่อนหน้า</button>`;
         } else {
@@ -3943,32 +4141,24 @@
         }
 
         let nextIdx = currentIdx + 1;
-        while (nextIdx < sec.end && skippedQs.has(ALL_Q[nextIdx].id)) {
-          nextIdx++;
-        }
-        if (nextIdx < sec.end) {
+        if (canFinishSection) {
+          h += `<button class="nav-btn-finish" onclick="finishSection()">จบ${escapeHTML(sec.name)} ✓</button>`;
+        } else if (nextIdx < sec.end) {
           h += `<button class="nav-btn-next" onclick="goQuestion(${nextIdx})">ข้อถัดไป →</button>`;
         } else {
-          h += `<button class="nav-btn-finish" onclick="finishSection()">จบ${escapeHTML(sec.name)} ✓</button>`;
+          h += `<button class="nav-btn-finish" onclick="notifySectionIncomplete()">ตอบให้ครบก่อนจบพาร์ท</button>`;
         }
         h += `</div>`;
 
-        // Question dots - allow clicking back if not timed out
+        // Question dots
         h += `<div class="q-dots">`;
         for (let i = sec.start; i < sec.end; i++) {
           const qId = ALL_Q[i].id;
-          const answered = answers[qId] !== undefined;
-          const isLocked = skippedQs.has(qId);
+          const answered = isAnsweredValue(answers[qId]);
           const active = i === currentIdx;
-          const dotCls = active
-            ? " active"
-            : isLocked
-              ? " skipped locked"
-              : answered
-                ? " answered"
-                : "";
+          const dotCls = active ? " active" : answered ? " answered" : "";
 
-          if (!active && !isLocked) {
+          if (!active) {
             h += `<div class="q-dot${dotCls}" onclick="goQuestion(${i})" style="cursor:pointer" title="ไปยังข้อนี้">${i - sec.start + 1}</div>`;
           } else {
             h += `<div class="q-dot${dotCls}">${i - sec.start + 1}</div>`;
@@ -3992,7 +4182,7 @@
         if (Array.isArray(q.sents))
           readText += "排列顺序：" + q.sents.join("。 ");
 
-        if (readText && q.section === "listening") {
+        if (readText && q.section === "listening" && !isListeningReviewMode()) {
           speak(readText, true);
         }
       }
@@ -4008,6 +4198,7 @@
         const safeValue = sanitizeAnswerForQuestion(question, value);
         answers[qidNum] = safeValue === undefined ? "" : safeValue;
         saveState();
+        syncSectionActionButton();
       }
 
       function selectAnswer(qid, val, el) {
@@ -4024,6 +4215,7 @@
           el.classList.add("selected");
         }
         saveState();
+        syncSectionActionButton();
       }
 
       function selectOrderAnswer(qid) {
@@ -4037,19 +4229,66 @@
           if (safeValue === undefined) return;
           answers[qidNum] = safeValue;
           saveState();
+          syncSectionActionButton();
         }
+      }
+
+      function notifySectionIncomplete() {
+        const progress = getSectionCompletion(currentSection);
+        if (progress.complete) {
+          finishSection();
+          return;
+        }
+        showInPageAlert(
+          `ยังตอบไม่ครบในพาร์ทนี้ เหลืออีก ${progress.remaining} ข้อ (${progress.answered}/${progress.total}) กรุณาทำให้ครบก่อนจบพาร์ท`,
+          "รับทราบ",
+          "⚠️ ยังตอบไม่ครบ",
+        );
+      }
+
+      function syncSectionActionButton() {
+        const nav = document.querySelector(".nav-buttons");
+        if (!nav) return;
+
+        const actionBtn = nav.querySelector(".nav-btn-next, .nav-btn-finish");
+        if (!actionBtn) return;
+
+        const sec = SECTIONS[currentSection];
+        const progress = getSectionCompletion(currentSection);
+        const atLastQuestion = currentIdx >= sec.end - 1;
+
+        if (progress.complete) {
+          actionBtn.className = "nav-btn-finish";
+          actionBtn.textContent = `จบ${sec.name} ✓`;
+          actionBtn.setAttribute("onclick", "finishSection()");
+          return;
+        }
+
+        if (atLastQuestion) {
+          actionBtn.className = "nav-btn-finish";
+          actionBtn.textContent = "ตอบให้ครบก่อนจบพาร์ท";
+          actionBtn.setAttribute("onclick", "notifySectionIncomplete()");
+          return;
+        }
+
+        actionBtn.className = "nav-btn-next";
+        actionBtn.textContent = "ข้อถัดไป →";
+        actionBtn.setAttribute("onclick", `goQuestion(${currentIdx + 1})`);
       }
 
       function goQuestion(idx) {
         if (idx < 0 || idx >= ALL_Q.length) return;
         const sec = SECTIONS[currentSection];
         if (idx < sec.start || idx >= sec.end) return;
-        const targetQId = ALL_Q[idx].id;
-        if (skippedQs.has(targetQId)) return; // Prevents going to locked question
 
         const currentQId = ALL_Q[currentIdx].id;
         const qTime = Math.floor((monotonicNow() - qStartTime) / 1000);
-        qTimes[currentQId] = (qTimes[currentQId] || 0) + qTime;
+        qTimes[currentQId] = clampInt(
+          (qTimes[currentQId] || 0) + qTime,
+          0,
+          SECTION_TIME[currentSection],
+          0,
+        );
 
         currentIdx = idx;
         highestIdx = Math.max(highestIdx, currentIdx);
@@ -4058,14 +4297,35 @@
         renderQuestion();
       }
 
-      function finishSection() {
+      function finishSection(reason = "manual") {
+        const now = monotonicNow();
+        const secElapsed = Math.floor((now - sectionStartTime) / 1000);
+
+        if (reason === "manual") {
+          const progress = getSectionCompletion(currentSection);
+          if (!progress.complete) {
+            showInPageAlert(
+              `ยังตอบไม่ครบในพาร์ทนี้ เหลืออีก ${progress.remaining} ข้อ (${progress.answered}/${progress.total}) กรุณาทำให้ครบก่อนจบพาร์ท`,
+              "รับทราบ",
+              "⚠️ ยังตอบไม่ครบ",
+            );
+            return;
+          }
+        }
+
         stopTTSPlayback();
-        // Save times
-        const qTime = Math.floor((monotonicNow() - qStartTime) / 1000);
-        qTimes[ALL_Q[currentIdx].id] =
-          (qTimes[ALL_Q[currentIdx].id] || 0) + qTime;
-        sectionTimes[currentSection] = Math.floor(
-          (monotonicNow() - sectionStartTime) / 1000,
+        const qTime = Math.floor((now - qStartTime) / 1000);
+        qTimes[ALL_Q[currentIdx].id] = clampInt(
+          (qTimes[ALL_Q[currentIdx].id] || 0) + qTime,
+          0,
+          SECTION_TIME[currentSection],
+          0,
+        );
+        sectionTimes[currentSection] = clampInt(
+          secElapsed,
+          0,
+          SECTION_TIME[currentSection],
+          0,
         );
 
         const order = ["listening", "reading", "writing"];
@@ -4076,16 +4336,22 @@
           const nextSec = order[curI + 1];
           currentSection = nextSec;
           currentIdx = SECTIONS[nextSec].start;
-          sectionStartTime = monotonicNow();
-          qStartTime = monotonicNow();
+          sectionStartTime = now;
+          qStartTime = now;
           saveState();
           updateSectionNav();
           renderQuestion();
           window.scrollTo({ top: 0, behavior: "smooth" });
         } else {
-          // All sections done — show submission confirmation
+          // Writing finished
           clearInterval(timerInterval);
-          showSubmitConfirmation();
+          if (reason === "timeup") {
+            examFinished = true;
+            saveState();
+            showResults();
+          } else {
+            showSubmitConfirmation();
+          }
         }
       }
 
@@ -4183,7 +4449,6 @@
         const order = ["listening", "reading", "writing"];
         const btns = document.querySelectorAll(".sec-nav-btn");
         btns.forEach((btn, i) => {
-          const secKey = order[i];
           const curI = order.indexOf(currentSection);
           btn.classList.remove("active", "completed", "locked");
           if (i < curI) btn.classList.add("completed");
@@ -4236,7 +4501,30 @@
         }
         if (q.type === "write") {
           if (!userAns) return "คุณไม่ได้เขียนคำตอบ";
-          return "ประโยคที่เขียนยังไม่ตรงกับคำตอบที่ถูกต้อง";
+          const norm = (s) => (s || "").replace(/[？。！，、\s]/g, "");
+          const uaStr = (userAns || "").trim();
+          const cAns = getCanonicalAnswer(q.id);
+          if (norm(uaStr) !== norm(cAns))
+            return "ประโยคที่เขียนยังเรียงคำไม่ถูกต้อง (ผิดไวยากรณ์/ความหมายเปลี่ยน)";
+          if (/[.?!]$/.test(uaStr))
+            return "กรุณาใช้เครื่องหมายจบประโยคของภาษาจีน (。！？) เท่านั้น ห้ามใช้ของภาษาอังกฤษ";
+          if (!/[。？！]$/.test(uaStr))
+            return "ประโยคต้องจบด้วยเครื่องหมายวรรคตอนภาษาจีน (。！？)";
+          return "คำตอบไม่ถูกต้อง";
+        }
+        if (q.type === "free") {
+          if (!userAns) return "คุณไม่ได้เขียนคำตอบ";
+          const uaStr = (userAns || "").trim();
+          const keyword = q.word || "";
+          if (!uaStr.includes(keyword))
+            return `คุณไม่ได้ใช้คำศัพท์บังคับ "${keyword}" ในประโยค`;
+          if (uaStr.length < keyword.length + 4)
+            return "ประโยคสั้นเกินไปและยังไม่สมบูรณ์ตามหลักไวยากรณ์ (ต้องมีประธาน กริยา กรรม)";
+          if (/[.?!]$/.test(uaStr))
+            return "กรุณาใช้เครื่องหมายจบประโยคของภาษาจีน (。！？) เท่านั้น";
+          if (!/[。？！]$/.test(uaStr))
+            return "ประโยคต้องจบด้วยเครื่องหมายวรรคตอนภาษาจีน (。！？)";
+          return "ประโยคไม่ผ่านเกณฑ์การให้คะแนน";
         }
         return "คำตอบไม่ถูกต้อง";
       }
@@ -4265,10 +4553,26 @@
           else if (q.type === "mc" || q.type === "fill") correct = ua === cAns;
           else if (q.type === "order") correct = ua === cAns;
           else if (q.type === "write") {
-            const norm = (s) => (s || "").replace(/[？。！，、\s]/g, "");
-            correct = norm(ua) === norm(cAns);
+            const norm = (s) => (s || "").replace(/[？。！，、\\s]/g, "");
+            const uaStr = (ua || "").trim();
+            const isCharsMatch = norm(uaStr) === norm(cAns);
+            const endsWithPunc = /[。？！]$/.test(uaStr);
+            const endsWithEnglishPunc = /[.?!]$/.test(uaStr);
+            correct = isCharsMatch && endsWithPunc && !endsWithEnglishPunc;
           } else if (q.type === "free") {
-            correct = (ua || "").length >= 3;
+            const uaStr = (ua || "").trim();
+            const keyword = q.word || "";
+            const hasKeyword = uaStr.includes(keyword);
+            const endsWithPunc = /[。？！]$/.test(uaStr);
+            const endsWithEnglishPunc = /[.?!]$/.test(uaStr);
+            const isLongEnough = uaStr.length >= keyword.length + 4;
+            const isChinese = /[\u4e00-\u9fa5]/.test(uaStr);
+            correct =
+              hasKeyword &&
+              endsWithPunc &&
+              !endsWithEnglishPunc &&
+              isLongEnough &&
+              isChinese;
           }
 
           // Track part stats
@@ -4506,7 +4810,7 @@
     ${summaryAdvice}
   </div>
 
-  <div class="score-ring"><svg width="160" height="160">
+  <div class="score-ring"><svg viewBox="0 0 160 160" aria-hidden="true">
     <circle cx="80" cy="80" r="65" fill="none" stroke="var(--glass)" stroke-width="10"/>
     <circle cx="80" cy="80" r="65" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}" style="transition:stroke-dashoffset 1.5s ease"/>
   </svg><div class="score-val" style="color:${color}">${totalScore}</div></div>
@@ -4547,7 +4851,7 @@
   <div class="feedback-card improve"><h4 style="color:var(--red)">📈 จุดที่ควรโฟกัสต่อ</h4><ul>${improvements.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
 
   <div style="text-align:center;margin:20px 0">
-    <button class="tts-btn" style="font-size:1em;padding:12px 24px" onclick="speak('你的HSK四级模拟考试总分${totalScore}分，满分三百分。听力${listenScore}分，阅读${readScore}分，书写${writeScore}分。${passed ? "恭喜你通过了！" : "继续加油！"}', true)">🔊 ฟังรายงานผล</button>
+    <button class="tts-btn" style="font-size:1em;padding:12px 24px" onclick="speak('รายงานผลสอบ HSK 4 ของคุณ คะแนนรวม ${totalScore} จาก 300 คะแนน คะแนนการฟัง ${listenScore} คะแนน คะแนนการอ่าน ${readScore} คะแนน และคะแนนการเขียน ${writeScore} คะแนน ${passed ? "ยินดีด้วย คุณผ่านเกณฑ์แล้ว" : "ยังไม่ผ่านเกณฑ์ในครั้งนี้ สู้ต่ออีกนิดนะ"}', true, 'th')">🔊 ฟังรายงานผล</button>
   </div>
 
   <h3 style="margin:30px 0 15px;text-align:center">📝 เฉลยคำตอบโดยละเอียด</h3>
@@ -4714,6 +5018,39 @@
         btn.disabled = input.length === 0;
       }
 
+      function showInPageAlert(message, okText = "ตกลง", title = "แจ้งเตือน") {
+        return new Promise((resolve) => {
+          const existing = document.getElementById("customAlertOverlay");
+          safeRemoveElement(existing);
+
+          const overlay = document.createElement("div");
+          overlay.className = "submit-overlay";
+          overlay.id = "customAlertOverlay";
+          overlay.style.zIndex = "10050";
+          overlay.innerHTML = `
+            <div class="submit-modal" style="max-width:420px">
+              <h3 style="margin-bottom:10px">${escapeHTML(title)}</h3>
+              <p style="color:var(--txt2);line-height:1.6;margin-bottom:12px">${escapeHTML(message)}</p>
+              <button class="btn-submit-final confirm" id="customAlertOk">${escapeHTML(okText)}</button>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            safeRemoveElement(overlay);
+            resolve(true);
+          };
+
+          bindTapEvent(document.getElementById("customAlertOk"), finish);
+          overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) finish();
+          });
+        });
+      }
+
       function showInPageConfirm(
         message,
         confirmText = "ยืนยัน",
@@ -4805,6 +5142,7 @@
         skippedQs = new Set();
         highestIdx = 0;
         userName = "";
+        listeningReviewNotified = false;
         document.getElementById("userNameInput").value = "";
         checkName();
       }
@@ -4820,7 +5158,7 @@
         }
       }
 
-      function startExam(isResume = false) {
+      async function startExam(isResume = false) {
         primeTTS();
         const userInputEl = document.getElementById("userNameInput");
 
@@ -4828,16 +5166,21 @@
           userName = sanitizeUserName(userInputEl.value);
           userInputEl.value = userName;
           if (!userName) {
-            alert("กรุณากรอกชื่อก่อนเริ่มสอบ");
+            await showInPageAlert("กรุณากรอกชื่อก่อนเริ่มสอบ", "รับทราบ");
             userInputEl.focus();
             return;
           }
+          skippedQs = new Set();
+          listeningReviewNotified = false;
           sectionStartTime = monotonicNow();
           qStartTime = monotonicNow();
           saveState();
         } else {
           userName = sanitizeUserName(userName || userInputEl.value);
           userInputEl.value = userName;
+          listeningReviewNotified =
+            currentSection === "listening" &&
+            sectionTimes.listening >= LISTENING_AUDIO_TIME;
         }
 
         document.getElementById("page1").style.display = "none";
