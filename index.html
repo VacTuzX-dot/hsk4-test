@@ -865,27 +865,33 @@
       }
       /* Results */
       .results-panel {
+        background: var(--card);
+        border-radius: 20px;
+        padding: clamp(20px, 5vw, 40px);
+        margin: 20px 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
         animation: fadeIn 0.5s;
         color: var(--txt);
       }
       .results-panel .summary-callout {
-        margin: 14px auto 12px;
+        margin: 14px auto 16px;
         max-width: 720px;
-        padding: 14px 16px;
+        padding: 16px 20px;
         border-radius: 12px;
-        border: 1px solid transparent;
+        border: 2px solid transparent;
         text-align: left;
         line-height: 1.65;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
       }
       .results-panel .summary-callout.pass {
         background: #ecfdf5;
-        border-color: #6ee7b7;
-        color: #14532d;
+        border-color: #34d399;
+        color: #064e3b;
       }
       .results-panel .summary-callout.fail {
         background: #fff1f2;
-        border-color: #fda4af;
-        color: #881337;
+        border-color: #fb7185;
+        color: #7f1d1d;
       }
       .results-panel .summary-note {
         color: #4b2f2f;
@@ -912,17 +918,20 @@
         height: 160px;
         margin: 0 auto 16px;
         position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .score-ring svg {
+        position: absolute;
+        top: 0;
+        left: 0;
         transform: rotate(-90deg);
       }
       .score-val {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
         font-size: 2.2em;
         font-weight: 900;
+        z-index: 2; /* To put the number explicitly above the SVG ring just in case */
       }
       .stats-grid {
         display: grid;
@@ -951,17 +960,17 @@
         margin-top: 3px;
       }
       .feedback-card {
-        padding: 16px;
+        padding: 20px 24px;
         border-radius: 12px;
-        margin: 12px 0;
+        margin: 16px 0;
       }
       .feedback-card.strength {
-        background: rgba(16, 185, 129, 0.05);
-        border: 1px solid rgba(16, 185, 129, 0.2);
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.4);
       }
       .feedback-card.improve {
-        background: rgba(239, 68, 68, 0.05);
-        border: 1px solid rgba(239, 68, 68, 0.2);
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.4);
       }
       .feedback-card li {
         margin: 5px 0;
@@ -997,9 +1006,10 @@
         background: var(--card);
         border-radius: 12px;
         padding: 16px;
-        margin: 10px 0;
-        border: 2px solid var(--card-border);
+        margin: 12px 0 16px;
+        border: 2px solid #e5e7eb;
         border-left: 6px solid var(--glass);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
       }
       .review-card.correct {
         border-left-color: var(--green);
@@ -1172,8 +1182,8 @@
         border-radius: 14px;
         padding: 18px 12px;
         text-align: center;
-        border: 2px solid var(--card-border);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        border: 2px solid #e5e7eb;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
       }
       .score-off-card .pts {
         font-size: 1.8em;
@@ -1286,7 +1296,7 @@
         background: var(--card);
         border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
       }
       .skill-table th {
         background: var(--red);
@@ -1299,7 +1309,10 @@
       .skill-table td {
         padding: 10px 14px;
         font-size: 0.85em;
-        border-bottom: 1px solid #f3f4f6;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .skill-table tr:nth-child(even) td {
+        background: #fafafa;
       }
       .skill-table tr:last-child td {
         border-bottom: none;
@@ -1541,10 +1554,10 @@
           font-size: 0.78em;
         }
         .feedback-card {
-          padding: 12px;
+          padding: 16px;
         }
         .feedback-card li {
-          font-size: 0.82em;
+          font-size: 0.85em;
         }
         .word-highlight {
           font-size: 1.3em;
@@ -3831,8 +3844,14 @@
         // Question card
         h += `<div class="q-card">`;
 
+        const isListening = q.section === "listening";
+
         if (q.type === "tf") {
-          h += `<div class="q-top"><span class="q-num">${safeQid}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio, true)">🔊 播放录音</button></div>`;
+          h += `<div class="q-top"><span class="q-num">${safeQid}</span>`;
+          if (isListening) {
+            h += `<button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio, true)">🔊 播放录音</button>`;
+          }
+          h += `</div>`;
           h += `<div class="audio-text">${escapeHTML(q.audio)}</div>`;
           h += `<div class="q-statement">★ ${escapeHTML(q.stmt)}</div>`;
           h += `<div class="tf-opts">
@@ -3842,7 +3861,11 @@
         } else if (q.type === "mc") {
           const mcOptions = Array.isArray(q.opts) ? q.opts : [];
           const labels = mcOptions.length <= 4 ? "ABCD" : "ABCDEF";
-          h += `<div class="q-top"><span class="q-num">${safeQid}</span><button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio||ALL_Q[${currentIdx}].passage, true)">🔊 播放</button></div>`;
+          h += `<div class="q-top"><span class="q-num">${safeQid}</span>`;
+          if (isListening) {
+            h += `<button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio||ALL_Q[${currentIdx}].passage, true)">🔊 播放</button>`;
+          }
+          h += `</div>`;
           if (q.audio)
             h += `<div class="audio-text">${escapeHTMLWithBreaks(q.audio)}</div>`;
           if (q.passage) {
@@ -3968,7 +3991,10 @@
         if (q.word) readText += "请用词造句：" + q.word + "。 ";
         if (Array.isArray(q.sents))
           readText += "排列顺序：" + q.sents.join("。 ");
-        if (readText) speak(readText, true);
+
+        if (readText && q.section === "listening") {
+          speak(readText, true);
+        }
       }
 
       function updateTextAnswer(qid, value) {
@@ -4033,6 +4059,7 @@
       }
 
       function finishSection() {
+        stopTTSPlayback();
         // Save times
         const qTime = Math.floor((monotonicNow() - qStartTime) / 1000);
         qTimes[ALL_Q[currentIdx].id] =
@@ -4524,6 +4551,11 @@
   </div>
 
   <h3 style="margin:30px 0 15px;text-align:center">📝 เฉลยคำตอบโดยละเอียด</h3>
+  
+  <div style="margin: 0 auto 20px; max-width: 400px; text-align: center;">
+    <input type="text" id="reviewSearchInput" placeholder="🔍 ค้นหาโจทย์, คำตอบ, หรือคำอธิบาย..." style="width:100%; padding:12px 16px; border-radius:12px; border:1px solid #e5e7eb; font-size:1em; outline:none;" onkeyup="filterReviews()">
+  </div>
+
   <div class="review-tabs">
     <button class="rev-tab active" onclick="showReview('listening',this)">🎧 การฟัง (${listenC}/${listenT})</button>
     <button class="rev-tab" onclick="showReview('reading',this)">📖 การอ่าน (${readC}/${readT})</button>
@@ -4655,6 +4687,22 @@
           h += `</div>`;
         });
         document.getElementById("reviewArea").innerHTML = h;
+        // Trigger filter in case there is already text in the search input when switching tabs
+        filterReviews();
+      }
+
+      function filterReviews() {
+        const input = document.getElementById("reviewSearchInput");
+        if (!input) return;
+        const filter = input.value.toLowerCase();
+        const cards = document.querySelectorAll("#reviewArea .review-card");
+        cards.forEach((card) => {
+          if (card.textContent.toLowerCase().includes(filter)) {
+            card.style.display = "";
+          } else {
+            card.style.display = "none";
+          }
+        });
       }
 
       // Initialize
