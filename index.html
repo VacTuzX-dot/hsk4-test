@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://code.responsivevoice.org https://*.responsivevoice.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' data: blob: https://*.responsivevoice.org; connect-src 'self' https://*.responsivevoice.org https://code.responsivevoice.org; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self';"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' data: blob: https://translate.google.com https://translate.googleapis.com; connect-src 'self' https://esm.sh; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self';"
     />
-    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="referrer" content="no-referrer" />
     <title>HSK 4 模拟考试 - 完整版</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap"
       rel="stylesheet"
     />
-    <script src="https://code.responsivevoice.org/responsivevoice.js?key=LXqnwrZk"></script>
+    <!-- Removed ResponsiveVoice script -->
     <style>
       * {
         margin: 0;
@@ -412,6 +412,7 @@
         cursor: pointer;
         font-size: 1em;
         transition: all 0.2s;
+        appearance: none;
         -webkit-appearance: none;
         touch-action: manipulation;
       }
@@ -2795,16 +2796,11 @@
         },
       };
 
-      // ========== TTS - ResponsiveVoice only ==========
-      let _responsiveVoiceUnlocked = false;
+      // ========== TTS - Youdao ==========
       let _ttsSessionId = 0;
 
-      function canUseResponsiveVoice() {
-        return (
-          typeof window !== "undefined" &&
-          window.responsiveVoice &&
-          typeof window.responsiveVoice.speak === "function"
-        );
+      function canUseYoudaoVoice() {
+        return typeof window.Audio === "function";
       }
 
       function hasActiveTextSelection() {
@@ -2832,12 +2828,10 @@
       }
 
       function stopTTSPlayback() {
-        if (canUseResponsiveVoice()) {
-          try {
-            window.responsiveVoice.cancel();
-          } catch (e) {
-            // ignore
-          }
+        if (window.__currentAudio) {
+          window.__currentAudio.pause();
+          window.__currentAudio.currentTime = 0;
+          window.__currentAudio = null;
         }
       }
 
@@ -2894,115 +2888,25 @@
         return result;
       }
 
-      function unlockResponsiveVoice() {
-        if (_responsiveVoiceUnlocked || !canUseResponsiveVoice()) return;
-        _responsiveVoiceUnlocked = true;
-
-        try {
-          if (typeof window.responsiveVoice.clickEvent === "function") {
-            window.responsiveVoice.clickEvent();
-          } else if (
-            typeof window.responsiveVoice.enableWindowClickHook === "function"
-          ) {
-            window.responsiveVoice.enableWindowClickHook();
+      // (Removed legacy ResponsiveVoice config/unlock functions)
+      function playAudioUrl(url, sessionId) {
+        return new Promise((resolve) => {
+          if (sessionId !== _ttsSessionId) {
+            resolve(false);
+            return;
           }
-          if ("enableEstimationTimeout" in window.responsiveVoice) {
-            // Better for Chinese text to prevent estimated timeout cutting speech.
-            window.responsiveVoice.enableEstimationTimeout = false;
-          }
-        } catch (e) {
-          // ignore unlock failure; best effort only
-        }
-      }
-
-      function pickResponsiveVoiceName() {
-        const preferred = [
-          "Chinese Female",
-          "Chinese Male",
-          "Chinese Taiwan Female",
-          "Chinese Taiwan Male",
-          "Chinese (Hong Kong) Female",
-          "Chinese (Hong Kong) Male",
-        ];
-        if (!canUseResponsiveVoice()) return preferred[0];
-
-        try {
-          if (typeof window.responsiveVoice.getVoices !== "function") {
-            return preferred[0];
-          }
-          const voices = window.responsiveVoice.getVoices() || [];
-          const names = voices
-            .map((v) => {
-              if (typeof v === "string") return v;
-              if (v && typeof v.name === "string") return v.name;
-              if (v && typeof v.voiceName === "string") return v.voiceName;
-              return "";
-            })
-            .filter(Boolean);
-          for (const v of preferred) {
-            if (names.includes(v)) return v;
-          }
-        } catch (e) {
-          // ignore lookup failure and use default
-        }
-
-        return preferred[0];
-      }
-
-      async function speakWithResponsiveVoice(text, sessionId) {
-        if (!canUseResponsiveVoice()) return false;
-
-        const chunks = splitTextForTTS(text);
-        if (chunks.length === 0) return false;
-
-        const voice = pickResponsiveVoiceName();
-        for (const chunk of chunks) {
-          if (sessionId !== _ttsSessionId) return false;
-
-          const ok = await new Promise((resolve) => {
-            let finished = false;
-            const watchdogMs = Math.max(
-              6000,
-              Math.min(65000, chunk.length * 280),
-            );
-            const timeoutId = setTimeout(() => done(false), watchdogMs);
-
-            function done(status) {
-              if (finished) return;
-              finished = true;
-              clearTimeout(timeoutId);
-              if (!status && canUseResponsiveVoice()) {
-                try {
-                  window.responsiveVoice.cancel();
-                } catch (e) {
-                  // ignore
-                }
-              }
-              resolve(status);
-            }
-
-            const options = {
-              rate: 0.9,
-              pitch: 1,
-              volume: 1,
-              onend: () => done(true),
-              onerror: () => done(false),
-            };
-
-            try {
-              window.responsiveVoice.speak(chunk, voice, options);
-            } catch (e) {
-              done(false);
-            }
+          const audio = new Audio(url);
+          window.__currentAudio = audio;
+          audio.onended = () => resolve(true);
+          audio.onerror = () => resolve(false);
+          audio.play().catch((e) => {
+            console.error("Google TTS Playback Error:", e);
+            resolve(false);
           });
-
-          if (!ok) return false;
-        }
-
-        return true;
+        });
       }
 
-      async function speak(text, force = false) {
+      async function speak(text, force = false, language = "zh") {
         const content = String(text || "").trim();
         if (!content) return;
         if (!force && hasActiveTextSelection()) return;
@@ -3010,13 +2914,32 @@
         primeTTS();
         const sessionId = ++_ttsSessionId;
         stopTTSPlayback();
-        const usedResponsive = await speakWithResponsiveVoice(content, sessionId);
-        if (sessionId !== _ttsSessionId || usedResponsive) return;
-        console.warn("ResponsiveVoice is unavailable on this browser/device.");
+
+        try {
+          const googleTTS = await import("https://esm.sh/google-tts-api");
+          const lang = language === "zh" ? "zh-CN" : "th";
+          const results = googleTTS.getAllAudioUrls(content, {
+            lang: lang,
+            slow: false,
+            host: "https://translate.google.com",
+            splitPunct: ",.?!，。？！、",
+          });
+
+          for (let i = 0; i < results.length; i++) {
+            if (sessionId !== _ttsSessionId) break;
+            await playAudioUrl(results[i].url, sessionId);
+          }
+        } catch (e) {
+          console.error("TTS module load or play error:", e);
+        }
       }
 
       function primeTTS() {
-        unlockResponsiveVoice();
+        // Provide a dummy function to prime TTS if needed.
+        // With standard HTML5 Audio, we typically prime by playing inside a user interaction handler.
+        if (window.__currentAudio) {
+          // Already initialized
+        }
       }
 
       // Warm up on first user interaction (important on iOS/Android)
@@ -3990,7 +3913,11 @@
         btn.disabled = input.length === 0;
       }
 
-      function showInPageConfirm(message, confirmText = "ยืนยัน", cancelText = "ยกเลิก") {
+      function showInPageConfirm(
+        message,
+        confirmText = "ยืนยัน",
+        cancelText = "ยกเลิก",
+      ) {
         return new Promise((resolve) => {
           const existing = document.getElementById("customConfirmOverlay");
           safeRemoveElement(existing);
