@@ -24,14 +24,14 @@
         --bg: #a61212;
         --bg-grad: linear-gradient(135deg, #b71c1c 0%, #7f0000 100%);
         --card: #ffffff;
-        --card-border: #f0f0f0;
+        --card-border: #e5e7eb;
         --card2: #fff5f5;
         --accent: #d32f2f;
         --gold: #f59e0b;
         --green: #2e7d32;
         --red: #d32f2f;
         --txt: #2c1a1a;
-        --txt2: #755f5f;
+        --txt2: #5c4a4a;
         --glass: rgba(211, 47, 47, 0.05);
         --radius: 16px;
       }
@@ -95,9 +95,9 @@
         font-size: 1.2em;
       }
       .main-subtitle {
-        color: rgba(255, 255, 255, 0.85);
+        color: rgba(255, 255, 255, 0.95);
         font-size: 16px;
-        font-weight: 300;
+        font-weight: 400;
       }
       .landing-card {
         background: white;
@@ -253,9 +253,13 @@
         border-color: var(--red);
         box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1);
       }
+      .name-input::placeholder {
+        color: #6b7280;
+        opacity: 1;
+      }
       .name-hint {
-        font-size: 12px;
-        color: #9ca3af;
+        font-size: 13px;
+        color: #6b7280;
         margin-top: 6px;
       }
       .btn-start {
@@ -293,9 +297,69 @@
       }
       .footer-note {
         text-align: center;
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 13px;
         margin-top: 20px;
+      }
+      /* Audio Preload Progress */
+      .preload-status {
+        margin-top: 14px;
+        padding: 14px 18px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        text-align: center;
+        transition: all 0.4s;
+      }
+      .preload-status.done {
+        background: rgba(46, 125, 50, 0.4); /* Stronger green */
+        border-color: rgba(76, 175, 80, 0.6);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      .preload-status.done .preload-label {
+        color: #ffffff;
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      }
+      .preload-label {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.95);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .preload-label .spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .preload-bar-bg {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .preload-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+      .preload-status.done .preload-bar-fill {
+        background: linear-gradient(90deg, #2e7d32, #4caf50);
       }
       /* Section Nav */
       .sec-nav {
@@ -332,8 +396,8 @@
       }
       .sec-nav-btn .sub {
         font-size: 0.65em;
-        font-weight: 400;
-        opacity: 0.7;
+        font-weight: 500;
+        opacity: 0.85;
       }
       .sec-nav-btn.active {
         border-color: var(--accent);
@@ -347,7 +411,7 @@
         background: rgba(46, 125, 50, 0.06);
       }
       .sec-nav-btn.locked {
-        opacity: 0.4;
+        opacity: 0.65;
       }
       /* Question Area */
       #questionArea {
@@ -769,13 +833,13 @@
         align-items: center;
         justify-content: center;
         border-radius: 8px;
-        font-size: 0.7em;
+        font-size: 0.75em;
         font-weight: 700;
         cursor: pointer;
         transition: all 0.2s;
-        border: 2px solid #eaeaea;
-        background: #fafafa;
-        color: var(--txt2);
+        border: 2px solid #d1d5db;
+        background: #f3f4f6;
+        color: #374151;
       }
       .q-dot.active {
         background: var(--accent);
@@ -1265,16 +1329,361 @@
         font-weight: 700;
       }
 
-      @media (max-width: 600px) {
-        .hero h1 {
-          font-size: 1.6em;
+      /* ===== GLOBAL RESPONSIVE FIXES ===== */
+      .sec-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .sec-nav::-webkit-scrollbar {
+        display: none;
+      }
+      .sec-nav-btn {
+        flex-shrink: 0;
+      }
+      .section-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 10px;
+      }
+      button,
+      .opt,
+      .tf-btn,
+      .q-dot,
+      a {
+        touch-action: manipulation;
+      }
+      /* Safe area (iPhone notch) */
+      @supports (padding: env(safe-area-inset-bottom)) {
+        .sec-nav {
+          padding-left: max(16px, env(safe-area-inset-left));
+          padding-right: max(16px, env(safe-area-inset-right));
+        }
+        .container,
+        .landing-container {
+          padding-left: max(16px, env(safe-area-inset-left));
+          padding-right: max(16px, env(safe-area-inset-right));
+        }
+        .nav-buttons {
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+      }
+
+      /* ===== EXTRA-SMALL PHONES: ≤374px (iPhone SE, small Android) ===== */
+      @media (max-width: 374px) {
+        .landing-container {
+          padding: 16px 10px 24px;
+        }
+        .main-title {
+          font-size: clamp(22px, 6vw, 28px);
+        }
+        .main-subtitle {
+          font-size: 13px;
+        }
+        .landing-card {
+          padding: 16px 12px;
+          border-radius: 14px;
+          margin-bottom: 12px;
+        }
+        .landing-card-title {
+          font-size: 14px;
+        }
+        .exam-info-grid {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        .info-box {
+          padding: 10px 8px;
+        }
+        .info-box .value {
+          font-size: 16px;
+        }
+        .section-table th,
+        .section-table td {
+          padding: 7px 8px;
+          font-size: 12px;
+        }
+        .pass-info {
+          flex-direction: column;
+          text-align: center;
+          gap: 8px;
+          padding: 12px;
+        }
+        .pass-text .detail {
+          font-size: 12px;
+        }
+        .name-input {
+          padding: 10px 12px;
+          font-size: 14px;
+        }
+        .btn-start {
+          padding: 14px;
+          font-size: 15px;
+        }
+        .sec-nav {
+          padding: 8px 8px;
+          gap: 6px;
+        }
+        .sec-nav-btn {
+          padding: 6px 8px;
+          font-size: 0.7em;
+          border-radius: 8px;
+          min-width: 70px;
+        }
+        .sec-nav-btn .sub {
+          font-size: 0.55em;
+        }
+        #questionArea {
+          padding-top: 65px;
+        }
+        .q-card {
+          padding: 14px 12px;
+          border-radius: 12px;
+        }
+        .q-num {
+          width: 28px;
+          height: 28px;
+          font-size: 0.75em;
+          border-radius: 8px;
+        }
+        .tts-btn {
+          padding: 6px 10px;
+          font-size: 0.75em;
+        }
+        .opt {
+          padding: 10px 10px;
+          font-size: 0.88em;
+          gap: 8px;
+        }
+        .opt-label {
+          width: 24px;
+          height: 24px;
+          font-size: 0.75em;
+        }
+        .tf-btn {
+          padding: 12px;
+          font-size: 1em;
+        }
+        .q-timer-bar {
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 8px;
+        }
+        .timer-val {
+          font-size: 1.05em;
+        }
+        .timer-label {
+          font-size: 0.6em;
+        }
+        .nav-btn-prev,
+        .nav-btn-next,
+        .nav-btn-finish {
+          padding: 10px 12px;
+          font-size: 0.8em;
+          border-radius: 10px;
+        }
+        .q-dot {
+          width: 24px;
+          height: 24px;
+          font-size: 0.65em;
+          border-radius: 6px;
+        }
+        .q-dots {
+          gap: 4px;
+          padding: 8px;
+        }
+        .q-counter {
+          font-size: 1.1em;
+        }
+        .section-badge {
+          font-size: 0.75em;
+          padding: 4px 10px;
         }
         .stats-grid {
           grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        .score-official,
+        .submit-summary-grid {
+          grid-template-columns: 1fr;
+        }
+        .score-ring {
+          width: 120px;
+          height: 120px;
+        }
+        .score-val {
+          font-size: 1.6em;
+        }
+        .stat-num {
+          font-size: 1.3em;
+        }
+        .resume-modal,
+        .submit-modal {
+          padding: 20px 16px;
+          width: 95%;
+        }
+        .submit-modal h3 {
+          font-size: 1.1em;
+        }
+        .review-card {
+          padding: 12px;
+        }
+        .rev-tab {
+          padding: 7px 12px;
+          font-size: 0.78em;
+        }
+        .review-tabs {
+          flex-wrap: wrap;
+        }
+        .skill-table th,
+        .skill-table td {
+          padding: 7px 8px;
+          font-size: 0.78em;
+        }
+        .feedback-card {
+          padding: 12px;
+        }
+        .feedback-card li {
+          font-size: 0.82em;
+        }
+        .word-highlight {
+          font-size: 1.3em;
+          padding: 6px 16px;
+        }
+        .container {
+          padding: 10px;
+        }
+      }
+
+      /* ===== REGULAR PHONES: 375–480px (iPhone 14/15, mainstream Android) ===== */
+      @media (min-width: 375px) and (max-width: 480px) {
+        .landing-container {
+          padding: 20px 14px 30px;
+        }
+        .main-title {
+          font-size: clamp(24px, 5.5vw, 32px);
+        }
+        .landing-card {
+          padding: 20px 16px;
+          margin-bottom: 14px;
+        }
+        .exam-info-grid {
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+        }
+        .info-box .value {
+          font-size: 16px;
+        }
+        .section-table th,
+        .section-table td {
+          padding: 8px 10px;
+          font-size: 13px;
+        }
+        .sec-nav {
+          padding: 10px 10px;
+          gap: 6px;
+        }
+        .sec-nav-btn {
+          padding: 7px 10px;
+          font-size: 0.75em;
+          border-radius: 10px;
+          min-width: 80px;
+        }
+        .sec-nav-btn .sub {
+          font-size: 0.58em;
+        }
+        #questionArea {
+          padding-top: 70px;
+        }
+        .q-card {
+          padding: 18px 14px;
+        }
+        .q-num {
+          width: 30px;
+          height: 30px;
+          font-size: 0.8em;
+        }
+        .tts-btn {
+          padding: 7px 12px;
+          font-size: 0.8em;
+        }
+        .opt {
+          padding: 12px 12px;
+          font-size: 0.92em;
+        }
+        .opt-label {
+          width: 26px;
+          height: 26px;
+          font-size: 0.8em;
+        }
+        .q-timer-bar {
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 10px;
+        }
+        .nav-btn-prev,
+        .nav-btn-next,
+        .nav-btn-finish {
+          padding: 11px 14px;
+          font-size: 0.85em;
+        }
+        .q-dot {
+          width: 26px;
+          height: 26px;
+          font-size: 0.7em;
+        }
+        .stats-grid {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        .score-official,
+        .submit-summary-grid {
+          grid-template-columns: 1fr;
+        }
+        .score-ring {
+          width: 130px;
+          height: 130px;
+        }
+        .score-val {
+          font-size: 1.8em;
+        }
+        .resume-modal,
+        .submit-modal {
+          padding: 24px 18px;
+          width: 94%;
+        }
+        .review-tabs {
+          flex-wrap: wrap;
+        }
+        .rev-tab {
+          padding: 8px 14px;
+          font-size: 0.82em;
+        }
+        .container {
+          padding: 12px;
+        }
+      }
+
+      /* ===== LARGE PHONES: 481–600px (phablets, landscape phones) ===== */
+      @media (min-width: 481px) and (max-width: 600px) {
+        .landing-container {
+          padding: 24px 16px 32px;
+        }
+        .landing-card {
+          padding: 22px 18px;
         }
         .sec-nav-btn {
           padding: 8px 12px;
           font-size: 0.8em;
+        }
+        .sec-nav-btn .sub {
+          font-size: 0.6em;
+        }
+        #questionArea {
+          padding-top: 75px;
+        }
+        .q-card {
+          padding: 20px 16px;
         }
         .q-timer-bar {
           flex-wrap: wrap;
@@ -1286,9 +1695,244 @@
           padding: 12px 16px;
           font-size: 0.9em;
         }
+        .stats-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
         .score-official,
         .submit-summary-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .container {
+          padding: 14px;
+        }
+      }
+
+      /* ===== TABLETS PORTRAIT: 601–834px (iPad Mini, small tablets) ===== */
+      @media (min-width: 601px) and (max-width: 834px) {
+        .container {
+          max-width: 720px;
+          padding: 16px;
+        }
+        .landing-container {
+          max-width: 720px;
+          padding: 28px 20px 36px;
+        }
+        .landing-card {
+          padding: 24px 22px;
+        }
+        .sec-nav {
+          justify-content: center;
+        }
+        .sec-nav-btn {
+          padding: 9px 16px;
+          font-size: 0.85em;
+        }
+        #questionArea {
+          padding-top: 78px;
+        }
+        .q-card {
+          padding: 22px 20px;
+        }
+        .score-ring {
+          width: 150px;
+          height: 150px;
+        }
+        .resume-modal,
+        .submit-modal {
+          max-width: 440px;
+        }
+      }
+
+      /* ===== TABLETS LANDSCAPE / SMALL LAPTOPS: 835–1024px (iPad Air/Pro) ===== */
+      @media (min-width: 835px) and (max-width: 1024px) {
+        .container {
+          max-width: 860px;
+          padding: 18px;
+        }
+        .landing-container {
+          max-width: 860px;
+          padding: 32px 24px 40px;
+        }
+        .landing-card {
+          padding: 28px 24px;
+        }
+        .sec-nav {
+          justify-content: center;
+          gap: 10px;
+        }
+        .sec-nav-btn {
+          padding: 10px 18px;
+          font-size: 0.88em;
+        }
+        #questionArea {
+          padding-top: 80px;
+        }
+        .q-card {
+          padding: 24px;
+        }
+        .opt {
+          padding: 14px 18px;
+        }
+        .score-ring {
+          width: 160px;
+          height: 160px;
+        }
+        .resume-modal,
+        .submit-modal {
+          max-width: 480px;
+        }
+      }
+
+      /* ===== DESKTOPS: 1025–1440px ===== */
+      @media (min-width: 1025px) and (max-width: 1440px) {
+        .container {
+          max-width: 900px;
+          padding: 20px;
+        }
+        .landing-container {
+          max-width: 900px;
+          padding: 36px 28px 44px;
+        }
+        .landing-card {
+          padding: 30px 28px;
+          border-radius: 22px;
+        }
+        .sec-nav {
+          justify-content: center;
+          gap: 12px;
+        }
+        .sec-nav-btn {
+          padding: 11px 22px;
+          font-size: 0.92em;
+        }
+        .q-card {
+          padding: 26px;
+        }
+        .opt:hover {
+          transform: translateX(4px);
+        }
+        .submit-modal {
+          max-width: 540px;
+        }
+      }
+
+      /* ===== LARGE SCREENS: ≥1441px ===== */
+      @media (min-width: 1441px) {
+        .container {
+          max-width: 1000px;
+          padding: 24px;
+        }
+        .landing-container {
+          max-width: 1000px;
+          padding: 40px 32px 48px;
+        }
+        .main-title {
+          font-size: 46px;
+        }
+        .main-subtitle {
+          font-size: 18px;
+        }
+        .landing-card {
+          padding: 34px 32px;
+          border-radius: 24px;
+        }
+        .info-box .value {
+          font-size: 22px;
+        }
+        .sec-nav {
+          justify-content: center;
+          gap: 14px;
+        }
+        .sec-nav-btn {
+          padding: 12px 26px;
+          font-size: 0.95em;
+        }
+        .q-card {
+          padding: 30px;
+        }
+        .q-num {
+          width: 40px;
+          height: 40px;
+          font-size: 1em;
+        }
+        .opt {
+          padding: 16px 20px;
+          font-size: 1.05em;
+        }
+        .opt:hover {
+          transform: translateX(5px);
+        }
+        .score-ring {
+          width: 180px;
+          height: 180px;
+        }
+        .score-val {
+          font-size: 2.5em;
+        }
+        .stat-num {
+          font-size: 1.8em;
+        }
+        .submit-modal {
+          max-width: 580px;
+        }
+      }
+
+      /* ===== LANDSCAPE PHONE ORIENTATION ===== */
+      @media (max-height: 500px) and (orientation: landscape) {
+        .sec-nav {
+          padding: 6px 10px;
+        }
+        .sec-nav-btn {
+          padding: 5px 10px;
+          font-size: 0.72em;
+        }
+        .sec-nav-btn .sub {
+          display: none;
+        }
+        #questionArea {
+          padding-top: 50px;
+        }
+        .q-card {
+          padding: 14px;
+        }
+        .landing-container {
+          padding: 12px 16px 20px;
+        }
+        .landing-card {
+          padding: 14px 12px;
+          margin-bottom: 10px;
+        }
+        .main-title {
+          font-size: 24px;
+          margin-bottom: 4px;
+        }
+        .btn-start {
+          padding: 12px;
+          font-size: 15px;
+          margin-top: 10px;
+        }
+        .resume-modal,
+        .submit-modal {
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+      }
+
+      /* ===== PRINT (bonus) ===== */
+      @media print {
+        .sec-nav,
+        .nav-buttons,
+        .tts-btn,
+        .btn-start,
+        .preload-status {
+          display: none !important;
+        }
+        body {
+          background: white !important;
+          color: black !important;
+        }
+        .container {
+          max-width: 100% !important;
         }
       }
     </style>
@@ -1405,6 +2049,14 @@
           >
             <span class="btn-icon">🚀</span> เริ่มสอบ
           </button>
+          <div class="preload-status" id="preloadStatus" style="display: none">
+            <div class="preload-label" id="preloadLabel">
+              <span class="spinner"></span> กำลังโหลดเสียง...
+            </div>
+            <div class="preload-bar-bg">
+              <div class="preload-bar-fill" id="preloadBar"></div>
+            </div>
+          </div>
         </div>
 
         <div class="footer-note">© HSK 4 模拟考试 • 新汉语水平考试（四级）</div>
@@ -2796,6 +3448,86 @@
         },
       };
 
+      // ========== Audio Pre-load Cache ==========
+      const audioCache = new Map(); // text -> Blob[]
+      let _preloadDone = false;
+
+      async function preloadAllAudio() {
+        const statusEl = document.getElementById("preloadStatus");
+        const barEl = document.getElementById("preloadBar");
+        const labelEl = document.getElementById("preloadLabel");
+        if (statusEl) statusEl.style.display = "block";
+
+        // Collect all unique audio texts from listening questions
+        const audioTexts = [];
+        const seen = new Set();
+        const allListening = [].concat(
+          HSK4.listening.tf || [],
+          HSK4.listening.mc || [],
+          HSK4.listening.long || [],
+        );
+        for (const q of allListening) {
+          const txt = String(q.audio || q.passage || "").trim();
+          if (txt && !seen.has(txt)) {
+            seen.add(txt);
+            audioTexts.push(txt);
+          }
+        }
+
+        if (audioTexts.length === 0) {
+          if (statusEl) statusEl.style.display = "none";
+          return;
+        }
+
+        let loaded = 0;
+        const total = audioTexts.length;
+
+        try {
+          const googleTTS = await import("https://esm.sh/google-tts-api");
+
+          // Preload 3 at a time to avoid overwhelming the network
+          for (let i = 0; i < audioTexts.length; i += 3) {
+            const batch = audioTexts.slice(i, i + 3);
+            await Promise.all(
+              batch.map(async (text) => {
+                try {
+                  const results = googleTTS.getAllAudioUrls(text, {
+                    lang: "zh-CN",
+                    slow: false,
+                    host: "https://translate.google.com",
+                    splitPunct: ",.?!，。？！、",
+                  });
+                  const blobs = [];
+                  for (const r of results) {
+                    const resp = await fetch(r.url);
+                    if (resp.ok) {
+                      blobs.push(await resp.blob());
+                    }
+                  }
+                  if (blobs.length > 0) {
+                    audioCache.set(text, blobs);
+                  }
+                } catch (e) {
+                  console.warn("Preload failed for:", text.substring(0, 30), e);
+                }
+                loaded++;
+                const pct = Math.round((loaded / total) * 100);
+                if (barEl) barEl.style.width = pct + "%";
+                if (labelEl)
+                  labelEl.innerHTML = `<span class="spinner"></span> กำลังโหลดเสียง ${loaded}/${total}`;
+              }),
+            );
+          }
+        } catch (e) {
+          console.error("Preload module load error:", e);
+        }
+
+        _preloadDone = true;
+        if (labelEl) labelEl.innerHTML = "✅ โหลดเสียงครบแล้ว — พร้อมสอบ!";
+        if (statusEl) statusEl.classList.add("done");
+        if (barEl) barEl.style.width = "100%";
+      }
+
       // ========== TTS - Youdao ==========
       let _ttsSessionId = 0;
 
@@ -2915,6 +3647,19 @@
         const sessionId = ++_ttsSessionId;
         stopTTSPlayback();
 
+        // Try playing from pre-loaded cache first
+        if (audioCache.has(content)) {
+          const blobs = audioCache.get(content);
+          for (const blob of blobs) {
+            if (sessionId !== _ttsSessionId) break;
+            const blobUrl = URL.createObjectURL(blob);
+            await playAudioUrl(blobUrl, sessionId);
+            URL.revokeObjectURL(blobUrl);
+          }
+          return;
+        }
+
+        // Fallback: load on-demand if not cached
         try {
           const googleTTS = await import("https://esm.sh/google-tts-api");
           const lang = language === "zh" ? "zh-CN" : "th";
@@ -3026,6 +3771,14 @@
           qStartTime = monotonicNow();
           saveState();
           renderQuestion();
+
+          // Auto-play audio if in listening section
+          if (currentSection === "listening") {
+            setTimeout(() => {
+              const ttsBtn = document.querySelector(".tts-btn");
+              if (ttsBtn) ttsBtn.click();
+            }, 100);
+          }
         } else {
           finishSection();
         }
@@ -4009,6 +4762,9 @@
       }
 
       function init() {
+        // Start pre-loading audio immediately
+        preloadAllAudio();
+
         if (loadState()) {
           document.getElementById("userNameInput").value = userName;
           checkName();
