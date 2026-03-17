@@ -650,7 +650,9 @@ function loadState() {
 }
 
 function applyChineseUi() {
-  document.title = stripExamVariantLabel(getZhValue("page.title", document.title));
+  document.title = stripExamVariantLabel(
+    getZhValue("page.title", document.title),
+  );
   setHTMLById("pageMainTitle", getZhValue("page.mainTitleHtml", ""));
   setTextById(
     "pageMainSubtitle",
@@ -1289,7 +1291,7 @@ function renderQuestion() {
         .map(
           (
             i,
-          ) => `<select onchange="selectOrderAnswer(${safeQid})" class="order-select" data-pos="${i}">
+          ) => `<select onchange="selectOrderAnswer(${safeQid}, this)" class="order-select" data-pos="${i}" data-prev="${escapeHTML(cur[i] || "")}">
         <option value="">${escapeHTML(getZhValue("ui.question.orderStepPrefix", "Step "))}${i + 1}</option>${orderLabels.map((l) => `<option value="${escapeHTML(l)}"${cur[i] === String(l).toUpperCase() ? " selected" : ""}>${escapeHTML(l)}</option>`).join("")}
       </select>`,
         )
@@ -1412,19 +1414,61 @@ function selectAnswer(qid, val, el) {
   syncSectionActionButton();
 }
 
-function selectOrderAnswer(qid) {
+function selectOrderAnswer(qid, changedEl = null) {
   const qidNum = Number(qid);
   const question = QUESTION_BY_ID.get(qidNum);
   if (!question || question.type !== "order") return;
-  const sels = document.querySelectorAll(".order-select");
-  const vals = Array.from(sels).map((s) => s.value);
-  if (vals.every((v) => v)) {
-    const safeValue = sanitizeAnswerForQuestion(question, vals.join(""));
-    if (safeValue === undefined) return;
-    answers[qidNum] = safeValue;
-    saveState();
-    syncSectionActionButton();
+
+  const sels = Array.from(document.querySelectorAll(".order-select"));
+  if (sels.length === 0) return;
+
+  if (changedEl && typeof changedEl.value === "string") {
+    const nextValue = sanitizePlainText(changedEl.value, 4).toUpperCase();
+    const prevValue = sanitizePlainText(
+      changedEl.dataset.prev || "",
+      4,
+    ).toUpperCase();
+
+    if (nextValue) {
+      const duplicates = sels.filter(
+        (sel) => sel !== changedEl && sel.value === nextValue,
+      );
+      duplicates.forEach((duplicate, index) => {
+        if (
+          index === 0 &&
+          prevValue &&
+          !sels.some(
+            (sel) =>
+              sel !== duplicate && sel !== changedEl && sel.value === prevValue,
+          )
+        ) {
+          duplicate.value = prevValue;
+        } else {
+          duplicate.value = "";
+        }
+      });
+    }
   }
+
+  sels.forEach((sel) => {
+    sel.dataset.prev = sanitizePlainText(sel.value || "", 4).toUpperCase();
+  });
+
+  const vals = sels.map((sel) =>
+    sanitizePlainText(sel.value || "", 4).toUpperCase(),
+  );
+  const safeValue = vals.every((v) => v)
+    ? sanitizeAnswerForQuestion(question, vals.join(""))
+    : undefined;
+
+  if (safeValue === undefined) {
+    delete answers[qidNum];
+  } else {
+    answers[qidNum] = safeValue;
+  }
+
+  saveState();
+  syncSectionActionButton();
 }
 
 function notifySectionIncomplete() {
