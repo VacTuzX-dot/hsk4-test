@@ -1,0 +1,18 @@
+.DS_Store
+
+# Temp and cache artifacts
+.tmp-*/
+.ocr-cache/
+__pycache__/
+*.pyc
+
+# Node / package manager outputs
+node_modules/
+tts-test/node_modules/
+
+# Swift build outputs
+.build/
+
+# Editor swap files
+*.swp
+*.swo

@@ -118,8 +118,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-
-// HSK 4 exam content and user-facing Chinese strings live in zh-content.json
+// HSK 4 exam content and UI strings are loaded from one of the generated datasets.
 const LISTENING_AUDIO_TIME = 30 * 60;
 const LISTENING_REVIEW_TIME = 3 * 60;
 const SECTION_TIME = {
@@ -128,7 +127,6 @@ const SECTION_TIME = {
   writing: 25 * 60,
 };
 const TIME_PER_Q = { listening: 40, reading: 60, writing: 100 };
-const ZH_CONTENT_URL = "zh-content.json";
 const SECTION_LAYOUT = {
   listening: {
     icon: "🎧",
@@ -302,6 +300,28 @@ function rebuildExamData() {
 }
 
 const getCanonicalAnswer = (qid) => CANONICAL_ANSWERS.get(qid);
+const normalizeChineseAnswer = (value) =>
+  String(value || "").replace(/[？。！，、\s]/g, "");
+const getAcceptedWriteAnswers = (question) => {
+  const accepted = [];
+  const primary = getCanonicalAnswer(question?.id);
+  if (typeof primary === "string" && primary.trim()) accepted.push(primary.trim());
+  if (Array.isArray(question?.altAnswers)) {
+    question.altAnswers.forEach((alt) => {
+      if (typeof alt === "string" && alt.trim()) accepted.push(alt.trim());
+    });
+  }
+  return [...new Set(accepted)];
+};
+const getAcceptedWriteAnswerText = (question) =>
+  getAcceptedWriteAnswers(question).join(" / ");
+const isAcceptedWriteAnswer = (question, value) => {
+  const normalizedValue = normalizeChineseAnswer(value);
+  if (!normalizedValue) return false;
+  return getAcceptedWriteAnswers(question).some(
+    (answer) => normalizeChineseAnswer(answer) === normalizedValue,
+  );
+};
 
 const sanitizeAnswerForQuestion = (question, rawValue) => {
   if (!question) return undefined;
@@ -334,10 +354,10 @@ const sanitizeAnswerForQuestion = (question, rawValue) => {
   if (question.type === "order") {
     if (typeof rawValue !== "string") return undefined;
     const labels = Array.isArray(question.labels) ? question.labels : [];
-    const normalized = sanitizePlainText(
-      rawValue.toUpperCase(),
-      10,
-    ).replace(/[^A-Z]/g, "");
+    const normalized = sanitizePlainText(rawValue.toUpperCase(), 10).replace(
+      /[^A-Z]/g,
+      "",
+    );
     if (labels.length === 0 || normalized.length !== labels.length) {
       return undefined;
     }
@@ -493,9 +513,7 @@ function saveState() {
   const currentSessionElapsed = Math.floor(
     (monotonicNow() - qStartTime) / 1000,
   );
-  const sectionElapsed = Math.floor(
-    (monotonicNow() - sectionStartTime) / 1000,
-  );
+  const sectionElapsed = Math.floor((monotonicNow() - sectionStartTime) / 1000);
 
   const liveSectionTimes = {
     ...sectionTimes,
@@ -646,14 +664,33 @@ function applyChineseUi() {
   setTextById("footerTitle", getZhValue("page.footerTitle", "HSK 4"));
 }
 
+const EXAM_FILE_POOL = [
+  "zh-content-1.json",
+  "zh-content-2.json",
+  "zh-content-3.json",
+  "zh-content-4.json",
+  "zh-content-5.json",
+];
+
+const EXAM_DATASET_KEY = "hsk4_exam_dataset_file";
+
 async function loadChineseContent() {
-  const response = await fetch(ZH_CONTENT_URL, { cache: "no-store" });
+  let randomFile = localStorage.getItem(EXAM_DATASET_KEY);
+  if (!randomFile || !EXAM_FILE_POOL.includes(randomFile)) {
+    randomFile =
+      EXAM_FILE_POOL[Math.floor(Math.random() * EXAM_FILE_POOL.length)];
+    localStorage.setItem(EXAM_DATASET_KEY, randomFile);
+  }
+
+  console.log(`Loading Dataset: ${randomFile}`);
+
+  const response = await fetch(randomFile, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`Failed to load ${ZH_CONTENT_URL}: ${response.status}`);
+    throw new Error(`Failed to load ${randomFile}: ${response.status}`);
   }
   const content = await response.json();
   if (!isPlainObject(content)) {
-    throw new Error("Invalid zh-content.json payload");
+    throw new Error(`Invalid ${randomFile} payload`);
   }
   ZH_CONTENT = content;
   HSK4 = normalizeExamData(content.examData);
@@ -975,10 +1012,7 @@ function updateTimer() {
         }
       }
     } else {
-      timerLabel = getZhValue(
-        "ui.timer.listeningRemaining",
-        "Listening Left",
-      );
+      timerLabel = getZhValue("ui.timer.listeningRemaining", "Listening Left");
       remain = Math.max(0, LISTENING_AUDIO_TIME - elapsed);
     }
   }
@@ -1555,10 +1589,8 @@ function getWhyWrongThai(q, userAns) {
   }
   if (q.type === "write") {
     if (!userAns) return "คุณไม่ได้เขียนคำตอบ";
-    const norm = (s) => (s || "").replace(/[？。！，、\s]/g, "");
     const uaStr = (userAns || "").trim();
-    const cAns = getCanonicalAnswer(q.id);
-    if (norm(uaStr) !== norm(cAns))
+    if (!isAcceptedWriteAnswer(q, uaStr))
       return "ประโยคที่เขียนยังเรียงคำไม่ถูกต้อง (ผิดไวยากรณ์/ความหมายเปลี่ยน)";
     if (/[.?!]$/.test(uaStr))
       return "กรุณาใช้เครื่องหมายจบประโยคของภาษาจีน (。！？) เท่านั้น ห้ามใช้ของภาษาอังกฤษ";
@@ -1607,9 +1639,8 @@ function showResults() {
     else if (q.type === "mc" || q.type === "fill") correct = ua === cAns;
     else if (q.type === "order") correct = ua === cAns;
     else if (q.type === "write") {
-      const norm = (s) => (s || "").replace(/[？。！，、\\s]/g, "");
       const uaStr = (ua || "").trim();
-      const isCharsMatch = norm(uaStr) === norm(cAns);
+      const isCharsMatch = isAcceptedWriteAnswer(q, uaStr);
       const endsWithPunc = /[。？！]$/.test(uaStr);
       const endsWithEnglishPunc = /[.?!]$/.test(uaStr);
       correct = isCharsMatch && endsWithPunc && !endsWithEnglishPunc;
@@ -1988,7 +2019,7 @@ function showReview(section, btn) {
     } else if (q.type === "order") {
       h += `<p class="rev-ans">คำตอบของคุณ：<b>${escapeHTML(q._userAns) || "ไม่ได้ตอบ"}</b> ｜ คำตอบที่ถูก：<b>${escapeHTML(cAns)}</b></p>`;
     } else if (q.type === "write") {
-      h += `<p class="rev-ans">คำตอบของคุณ：<b>${escapeHTML(q._userAns) || "ไม่ได้ตอบ"}</b><br>คำตอบที่ถูก：<b>${escapeHTML(cAns)}</b></p>`;
+      h += `<p class="rev-ans">คำตอบของคุณ：<b>${escapeHTML(q._userAns) || "ไม่ได้ตอบ"}</b><br>คำตอบที่ถูก：<b>${escapeHTML(getAcceptedWriteAnswerText(q) || cAns)}</b></p>`;
     } else if (q.type === "free") {
       h += `<p class="rev-ans">คำตอบของคุณ：<b>${escapeHTML(q._userAns) || "ไม่ได้ตอบ"}</b><br>ตัวอย่างคำตอบ：<b>${escapeHTML(q.sample)}</b></p>`;
     }
@@ -2166,6 +2197,7 @@ async function restartExam() {
 
   closeResumeModal();
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem("hsk4_exam_dataset_file");
   answers = {};
   qTimes = {};
   currentIdx = 0;
