@@ -305,7 +305,8 @@ const normalizeChineseAnswer = (value) =>
 const getAcceptedWriteAnswers = (question) => {
   const accepted = [];
   const primary = getCanonicalAnswer(question?.id);
-  if (typeof primary === "string" && primary.trim()) accepted.push(primary.trim());
+  if (typeof primary === "string" && primary.trim())
+    accepted.push(primary.trim());
   if (Array.isArray(question?.altAnswers)) {
     question.altAnswers.forEach((alt) => {
       if (typeof alt === "string" && alt.trim()) accepted.push(alt.trim());
@@ -673,12 +674,57 @@ const EXAM_FILE_POOL = [
 ];
 
 const EXAM_DATASET_KEY = "hsk4_exam_dataset_file";
+const EXAM_DATASET_BAG_KEY = "hsk4_exam_dataset_bag";
 
-async function loadChineseContent() {
+function shuffleFiles(files) {
+  const shuffled = files.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function loadExamBag() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(EXAM_DATASET_BAG_KEY) || "[]",
+    );
+    if (!Array.isArray(saved)) return [];
+    return [...new Set(saved)].filter((file) => EXAM_FILE_POOL.includes(file));
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveExamBag(bag) {
+  localStorage.setItem(EXAM_DATASET_BAG_KEY, JSON.stringify(bag));
+}
+
+function pickRandomExamFile(excludeFiles = []) {
+  const blocked = new Set(
+    (Array.isArray(excludeFiles) ? excludeFiles : [excludeFiles]).filter(
+      (file) => EXAM_FILE_POOL.includes(file),
+    ),
+  );
+  const allowedFiles = EXAM_FILE_POOL.filter((file) => !blocked.has(file));
+  if (!allowedFiles.length) return EXAM_FILE_POOL[0];
+
+  let bag = loadExamBag().filter((file) => allowedFiles.includes(file));
+  if (!bag.length) {
+    bag = shuffleFiles(allowedFiles);
+  }
+
+  const nextFile = bag.shift() || allowedFiles[0];
+  saveExamBag(bag);
+  return nextFile;
+}
+
+async function loadChineseContent(options = {}) {
+  const { forceNew = false, excludeFile = "" } = options;
   let randomFile = localStorage.getItem(EXAM_DATASET_KEY);
-  if (!randomFile || !EXAM_FILE_POOL.includes(randomFile)) {
-    randomFile =
-      EXAM_FILE_POOL[Math.floor(Math.random() * EXAM_FILE_POOL.length)];
+  if (forceNew || !randomFile || !EXAM_FILE_POOL.includes(randomFile)) {
+    randomFile = pickRandomExamFile([excludeFile, randomFile]);
     localStorage.setItem(EXAM_DATASET_KEY, randomFile);
   }
 
@@ -700,6 +746,43 @@ async function loadChineseContent() {
   SECTIONS = buildSectionsConfig(content.sections);
   rebuildExamData();
   applyChineseUi();
+}
+
+function resetAudioPreloadState() {
+  audioCache.clear();
+  _preloadDone = false;
+  stopTTSPlayback();
+
+  const statusEl = document.getElementById("preloadStatus");
+  const barEl = document.getElementById("preloadBar");
+  const labelEl = document.getElementById("preloadLabel");
+  if (statusEl) {
+    statusEl.style.display = "none";
+    statusEl.classList.remove("done");
+  }
+  if (barEl) barEl.style.width = "0%";
+  if (labelEl) {
+    labelEl.innerHTML = `<span class="spinner"></span> กำลังโหลดเสียง...`;
+  }
+}
+
+function resetExamProgressState() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  examFinished = false;
+  answers = {};
+  qTimes = {};
+  currentIdx = 0;
+  currentSection = "listening";
+  sectionStartTime = monotonicNow();
+  qStartTime = monotonicNow();
+  sectionTimes = { listening: 0, reading: 0, writing: 0 };
+  skippedQs = new Set();
+  highestIdx = 0;
+  userName = "";
+  listeningReviewNotified = false;
 }
 
 function renderBootstrapError(error, title = "เริ่มต้นระบบไม่สำเร็จ") {
@@ -2196,18 +2279,21 @@ async function restartExam() {
   if (!shouldReset) return;
 
   closeResumeModal();
+  const currentDataset = localStorage.getItem(EXAM_DATASET_KEY) || "";
   localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem("hsk4_exam_dataset_file");
-  answers = {};
-  qTimes = {};
-  currentIdx = 0;
-  currentSection = "listening";
-  sectionTimes = { listening: 0, reading: 0, writing: 0 };
-  skippedQs = new Set();
-  highestIdx = 0;
-  userName = "";
-  listeningReviewNotified = false;
+  localStorage.removeItem(EXAM_DATASET_KEY);
+  resetExamProgressState();
+  resetAudioPreloadState();
   document.getElementById("userNameInput").value = "";
+  document.getElementById("examContainer").style.display = "none";
+  document.getElementById("page1").style.display = "block";
+  try {
+    await loadChineseContent({ forceNew: true, excludeFile: currentDataset });
+    preloadAllAudio();
+  } catch (error) {
+    renderBootstrapError(error, "โหลดข้อสอบชุดใหม่ไม่สำเร็จ");
+    return;
+  }
   checkName();
 }
 
