@@ -212,6 +212,21 @@ const getZhValue = (path, fallback = "") => {
   return current ?? fallback;
 };
 
+const stripExamVariantLabel = (value) => {
+  if (typeof value !== "string" || !value.trim()) return value;
+
+  return value
+    .replace(/\s*[·\-–—|]\s*H\d{5}\s*卷/gi, "")
+    .replace(/\s*[·\-–—|]\s*H\d{5}(?=\s*[·\-–—|]|$)/gi, "")
+    .replace(/\bH\d{5}\s*卷\b/gi, "")
+    .replace(/\bH\d{5}\b/gi, "")
+    .replace(/\s*([·\-–—|])\s*([·\-–—|]\s*)+/g, " $1 ")
+    .replace(/^\s*[·\-–—|]\s*/g, "")
+    .replace(/\s*[·\-–—|]\s*$/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+};
+
 const setTextById = (id, value) => {
   const el = document.getElementById(id);
   if (el && typeof value === "string") el.textContent = value;
@@ -635,9 +650,12 @@ function loadState() {
 }
 
 function applyChineseUi() {
-  document.title = getZhValue("page.title", document.title);
+  document.title = stripExamVariantLabel(getZhValue("page.title", document.title));
   setHTMLById("pageMainTitle", getZhValue("page.mainTitleHtml", ""));
-  setTextById("pageMainSubtitle", getZhValue("page.subtitle", ""));
+  setTextById(
+    "pageMainSubtitle",
+    stripExamVariantLabel(getZhValue("page.subtitle", "")),
+  );
   setTextById(
     "navListeningLabel",
     `🎧 ${getZhValue("page.nav.listening.label", "Listening")}`,
@@ -662,7 +680,10 @@ function applyChineseUi() {
     "navWritingSub",
     getZhValue("page.nav.writing.sub", "15 questions"),
   );
-  setTextById("footerTitle", getZhValue("page.footerTitle", "HSK 4"));
+  setTextById(
+    "footerTitle",
+    stripExamVariantLabel(getZhValue("page.footerTitle", "HSK 4")),
+  );
 }
 
 const EXAM_FILE_POOL = [
