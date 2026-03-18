@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' data: blob: https://translate.google.com https://translate.googleapis.com; connect-src 'self' https://esm.sh; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self';"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh https://code.iconify.design; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' data: blob: https://translate.google.com https://translate.googleapis.com; connect-src 'self' https://esm.sh https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self';"
     />
     <meta name="referrer" content="no-referrer" />
     <title>HSK 4 Practice Test</title>
+    <link rel="icon" href="njz.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -22,6 +23,7 @@
     />
     <link rel="modulepreload" href="https://esm.sh/google-tts-api" />
     <!-- Removed ResponsiveVoice script -->
+    <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -30,7 +32,13 @@
       <div class="landing-container">
         <div class="landing-header">
           <div class="chinese-badge">
-            <span class="flag-icon">🇨🇳</span>
+            <span class="flag-icon">
+              <iconify-icon
+                icon="mdi:flag-variant"
+                class="ui-icon"
+                aria-hidden="true"
+              ></iconify-icon>
+            </span>
             <span>Hanyu Shuiping Kaoshi</span>
           </div>
           <h1 class="main-title" id="pageMainTitle">HSK 4 Practice Test</h1>
@@ -66,19 +74,37 @@
           <div class="landing-card-title">ข้อมูลการสอบ</div>
           <div class="exam-info-grid">
             <div class="info-box">
-              <div class="icon">📝</div>
+              <div class="icon">
+                <iconify-icon
+                  icon="mdi:clipboard-text-outline"
+                  class="ui-icon"
+                  aria-hidden="true"
+                ></iconify-icon>
+              </div>
               <div class="label">จำนวนข้อ</div>
               <div class="value">100</div>
               <div class="unit">ข้อ</div>
             </div>
             <div class="info-box">
-              <div class="icon">⏱️</div>
+              <div class="icon">
+                <iconify-icon
+                  icon="mdi:timer-outline"
+                  class="ui-icon"
+                  aria-hidden="true"
+                ></iconify-icon>
+              </div>
               <div class="label">เวลารวม</div>
               <div class="value">95</div>
               <div class="unit">นาที</div>
             </div>
             <div class="info-box">
-              <div class="icon">🏆</div>
+              <div class="icon">
+                <iconify-icon
+                  icon="mdi:trophy-award"
+                  class="ui-icon"
+                  aria-hidden="true"
+                ></iconify-icon>
+              </div>
               <div class="label">เกณฑ์ผ่าน</div>
               <div class="value">60</div>
               <div class="unit">%</div>
@@ -100,19 +126,46 @@
             <tbody>
               <tr>
                 <td>1</td>
-                <td><span class="section-tag tag-listen">🎧 การฟัง</span></td>
+                <td>
+                  <span class="section-tag tag-listen">
+                    <iconify-icon
+                      icon="mdi:headphones"
+                      class="ui-icon"
+                      aria-hidden="true"
+                    ></iconify-icon>
+                    <span>การฟัง</span>
+                  </span>
+                </td>
                 <td>45 ข้อ</td>
                 <td>30 นาที</td>
               </tr>
               <tr>
                 <td>2</td>
-                <td><span class="section-tag tag-read">📖 การอ่าน</span></td>
+                <td>
+                  <span class="section-tag tag-read">
+                    <iconify-icon
+                      icon="mdi:book-open-variant"
+                      class="ui-icon"
+                      aria-hidden="true"
+                    ></iconify-icon>
+                    <span>การอ่าน</span>
+                  </span>
+                </td>
                 <td>40 ข้อ</td>
                 <td>40 นาที</td>
               </tr>
               <tr>
                 <td>3</td>
-                <td><span class="section-tag tag-write">✍️ การเขียน</span></td>
+                <td>
+                  <span class="section-tag tag-write">
+                    <iconify-icon
+                      icon="mdi:pencil-outline"
+                      class="ui-icon"
+                      aria-hidden="true"
+                    ></iconify-icon>
+                    <span>การเขียน</span>
+                  </span>
+                </td>
                 <td>15 ข้อ</td>
                 <td>25 นาที</td>
               </tr>
@@ -133,7 +186,14 @@
         </div>
 
         <div class="landing-card">
-          <div class="landing-card-title">⏱️ กติกาเวลา (สอบคอมพิวเตอร์)</div>
+          <div class="landing-card-title">
+            <iconify-icon
+              icon="mdi:timer-outline"
+              class="ui-icon title-icon"
+              aria-hidden="true"
+            ></iconify-icon>
+            <span>กติกาเวลา (สอบคอมพิวเตอร์)</span>
+          </div>
           <ul
             style="
               font-size: 14px;
@@ -172,7 +232,13 @@
 
         <div class="landing-card">
           <div class="pass-info">
-            <div class="pass-icon">🎯</div>
+            <div class="pass-icon">
+              <iconify-icon
+                icon="mdi:target"
+                class="ui-icon"
+                aria-hidden="true"
+              ></iconify-icon>
+            </div>
             <div class="pass-text">
               <div class="title">เกณฑ์การผ่านการสอบ HSK 4</div>
               <div class="detail">
@@ -185,7 +251,12 @@
 
         <div class="landing-card">
           <div class="landing-card-title">
-            🚨 กฎข้อบังคับในการทำพาร์ท "การเขียน"
+            <iconify-icon
+              icon="mdi:alert-rhombus-outline"
+              class="ui-icon title-icon"
+              aria-hidden="true"
+            ></iconify-icon>
+            <span>กฎข้อบังคับในการทำพาร์ท "การเขียน"</span>
           </div>
           <p
             style="
@@ -244,7 +315,15 @@
               และต้องตบท้ายประโยคด้วยเครื่องหมายวรรคตอนภาษาจีนเช่นเดียวกัน
             </li>
             <li>
-              ❌ <strong>ห้ามใช้:</strong> เครื่องหมายวรรคตอนของภาษาอังกฤษ (เช่น
+              <span class="icon-text">
+                <iconify-icon
+                  icon="mdi:close-circle-outline"
+                  class="ui-icon inline-status-icon"
+                  aria-hidden="true"
+                ></iconify-icon>
+                <strong>ห้ามใช้:</strong>
+              </span>
+              เครื่องหมายวรรคตอนของภาษาอังกฤษ (เช่น
               <code
                 style="
                   background: #f3f4f6;
@@ -292,7 +371,14 @@
             disabled
             onclick="startExam()"
           >
-            <span class="btn-icon">🚀</span> เริ่มสอบ
+            <span class="btn-icon">
+              <iconify-icon
+                icon="mdi:rocket-launch-outline"
+                class="ui-icon"
+                aria-hidden="true"
+              ></iconify-icon>
+            </span>
+            <span>เริ่มสอบ</span>
           </button>
           <div class="preload-status" id="preloadStatus" style="display: none">
             <div class="preload-label" id="preloadLabel">
@@ -309,15 +395,33 @@
     <div class="container" id="examContainer" style="display: none">
       <div class="sec-nav">
         <div class="sec-nav-btn active" data-sec="listening">
-          <span id="navListeningLabel">🎧 Listening</span
+          <span id="navListeningLabel" class="icon-text"
+            ><iconify-icon
+              icon="mdi:headphones"
+              class="ui-icon"
+              aria-hidden="true"
+            ></iconify-icon
+            ><span>Listening</span></span
           ><span class="sub" id="navListeningSub">Loading...</span>
         </div>
         <div class="sec-nav-btn locked" data-sec="reading">
-          <span id="navReadingLabel">📖 Reading</span
+          <span id="navReadingLabel" class="icon-text"
+            ><iconify-icon
+              icon="mdi:book-open-variant"
+              class="ui-icon"
+              aria-hidden="true"
+            ></iconify-icon
+            ><span>Reading</span></span
           ><span class="sub" id="navReadingSub">Loading...</span>
         </div>
         <div class="sec-nav-btn locked" data-sec="writing">
-          <span id="navWritingLabel">✍️ Writing</span
+          <span id="navWritingLabel" class="icon-text"
+            ><iconify-icon
+              icon="mdi:pencil-outline"
+              class="ui-icon"
+              aria-hidden="true"
+            ></iconify-icon
+            ><span>Writing</span></span
           ><span class="sub" id="navWritingSub">Loading...</span>
         </div>
       </div>
@@ -326,7 +430,13 @@
     <footer class="site-footer" aria-label="Website footer">
       <div class="site-footer-inner">
         <div class="footer-brand">
-          <span class="footer-mark">HSK4</span>
+          <span class="footer-mark" aria-label="HSK 4 website mark">
+            <iconify-icon
+              icon="mdi:translate"
+              class="ui-icon"
+              aria-hidden="true"
+            ></iconify-icon>
+          </span>
           <div>
             <p class="footer-title" id="footerTitle">HSK 4 Practice Test</p>
             <p class="footer-subtitle">

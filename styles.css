@@ -19,6 +19,20 @@
   --glass: rgba(211, 47, 47, 0.05);
   --radius: 16px;
 }
+iconify-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+}
+.ui-icon {
+  flex-shrink: 0;
+}
+.icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+}
 body {
   font-family: "Noto Sans SC", sans-serif;
   background-color: #280d0d;
@@ -87,6 +101,11 @@ body::before {
   letter-spacing: 1px;
 }
 .flag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.flag-icon .ui-icon {
   font-size: 20px;
 }
 .main-title {
@@ -122,6 +141,9 @@ body::before {
   align-items: center;
   gap: 8px;
 }
+.landing-card-title .title-icon {
+  font-size: 1.1em;
+}
 .landing-card-title::before {
   content: "";
   display: block;
@@ -143,8 +165,13 @@ body::before {
   text-align: center;
 }
 .info-box .icon {
-  font-size: 22px;
+  display: flex;
+  justify-content: center;
+  color: var(--red);
   margin-bottom: 6px;
+}
+.info-box .icon .ui-icon {
+  font-size: 22px;
 }
 .info-box .label {
   font-size: 12px;
@@ -191,7 +218,9 @@ body::before {
   background: #fafafa;
 }
 .section-tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 2px 10px;
   border-radius: 20px;
   font-size: 12px;
@@ -219,6 +248,12 @@ body::before {
   padding: 16px;
 }
 .pass-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+}
+.pass-icon .ui-icon {
   font-size: 32px;
 }
 .pass-text .title {
@@ -286,6 +321,10 @@ body::before {
   margin-top: 18px;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .btn-start:not(:disabled):hover {
   transform: translateY(-2px);
@@ -300,7 +339,13 @@ body::before {
   box-shadow: none;
 }
 .btn-start .btn-icon {
-  margin-right: 8px;
+  margin-right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-start .btn-icon .ui-icon {
+  font-size: 1.15em;
 }
 .creator-showcase {
   display: grid;
@@ -457,6 +502,9 @@ body::before {
   letter-spacing: 0.06em;
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
 }
+.footer-mark .ui-icon {
+  font-size: 32px;
+}
 .footer-title {
   color: white;
   font-size: 16px;
@@ -507,9 +555,9 @@ body::before {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 .preload-status.done .preload-label {
-  color: #ffffff;
+  color: #111111;
   font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-shadow: none;
 }
 .preload-label {
   font-size: 13px;
@@ -589,6 +637,9 @@ body::before {
   font-weight: 500;
   opacity: 0.85;
 }
+.sec-nav-btn .icon-text {
+  justify-content: center;
+}
 .sec-nav-btn.active {
   border-color: var(--accent);
   color: var(--accent);
@@ -615,6 +666,9 @@ body::before {
   margin-bottom: 12px;
 }
 .section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 14px;
   border-radius: 10px;
   font-size: 0.85em;
@@ -669,6 +723,10 @@ body::before {
   appearance: none;
   -webkit-appearance: none;
   touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .btn-continue {
   background: var(--red);
@@ -806,6 +864,14 @@ body::before {
   margin: 12px 0;
   border-left: 3px solid var(--accent);
   font-size: 1.05em;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.6;
+}
+.q-statement .statement-icon {
+  color: var(--accent);
+  margin-top: 0.15em;
 }
 .q-text-fill {
   font-size: 1.05em;
@@ -969,6 +1035,10 @@ body::before {
   cursor: pointer;
   transition: all 0.3s;
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .nav-btn-prev {
   background: #ffffff;
@@ -1160,6 +1230,9 @@ body::before {
   border-radius: 12px;
   margin: 16px 0;
 }
+.feedback-card h4 .icon-text {
+  justify-content: center;
+}
 .feedback-card.strength {
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.4);
@@ -1173,6 +1246,17 @@ body::before {
   font-size: 0.88em;
   line-height: 1.6;
   color: var(--txt);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.feedback-card ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 10px 0 0;
+}
+.feedback-card li .feedback-icon {
+  margin-top: 0.15em;
 }
 /* Review */
 .review-tabs {
@@ -1180,6 +1264,7 @@ body::before {
   gap: 8px;
   justify-content: center;
   margin: 16px 0;
+  flex-wrap: wrap;
 }
 .rev-tab {
   padding: 10px 20px;
@@ -1192,6 +1277,10 @@ body::before {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .rev-tab.active {
   background: rgba(211, 47, 47, 0.08);
@@ -1220,6 +1309,12 @@ body::before {
   margin-bottom: 8px;
 }
 .rev-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+.rev-icon .ui-icon {
   font-size: 1.2em;
 }
 .rev-time {
@@ -1279,6 +1374,9 @@ body::before {
   font-size: 1.4em;
   margin-bottom: 16px;
 }
+.submit-modal h3 .icon-text {
+  justify-content: center;
+}
 .submit-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1300,6 +1398,8 @@ body::before {
   font-size: 0.78em;
   color: var(--txt2);
   margin-top: 4px;
+  display: flex;
+  justify-content: center;
 }
 .submit-warning {
   background: #fff7ed;
@@ -1309,6 +1409,9 @@ body::before {
   margin: 14px 0;
   font-size: 0.88em;
   color: #92400e;
+}
+.submit-warning .icon-text {
+  align-items: flex-start;
 }
 .btn-submit-final {
   width: 100%;
@@ -1321,6 +1424,10 @@ body::before {
   font-family: inherit;
   transition: all 0.2s;
   margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .btn-submit-final.confirm {
   background: linear-gradient(135deg, var(--green), #1b5e20);
@@ -1341,7 +1448,10 @@ body::before {
 
 /* Grade Badge */
 .grade-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 8px 24px;
   border-radius: 50px;
   font-size: 1.1em;
@@ -1394,6 +1504,11 @@ body::before {
   font-size: 0.85em;
   font-weight: 600;
   margin-top: 6px;
+  display: flex;
+  justify-content: center;
+}
+.score-off-card .sec-label .icon-text {
+  justify-content: center;
 }
 .score-off-card .bar-wrap {
   height: 6px;
@@ -1444,6 +1559,9 @@ body::before {
   margin-bottom: 6px;
   font-size: 0.95em;
 }
+.rev-exp-box h5 .icon-text {
+  align-items: flex-start;
+}
 .rev-exp-box .why-wrong {
   color: #dc2626;
   margin-bottom: 8px;
@@ -1455,6 +1573,13 @@ body::before {
   color: var(--txt2);
   margin-top: 6px;
   font-size: 0.85em;
+}
+.rev-exp-box .why-wrong,
+.rev-exp-box .why-correct,
+.rev-exp-box .exp-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 .rev-difficulty {
   display: inline-block;
@@ -1485,6 +1610,24 @@ body::before {
   text-align: center;
   margin-bottom: 16px;
   font-size: 1.1em;
+}
+.skill-analysis h4 .icon-text {
+  justify-content: center;
+}
+.review-search-wrap {
+  position: relative;
+}
+.review-search-wrap .search-field-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  font-size: 1.05em;
+  pointer-events: none;
+}
+.review-search-wrap input {
+  padding-left: 44px !important;
 }
 .skill-table {
   width: 100%;
@@ -1688,6 +1831,9 @@ a {
     height: 46px;
     border-radius: 14px;
     font-size: 14px;
+  }
+  .footer-mark .ui-icon {
+    font-size: 24px;
   }
   .footer-title {
     font-size: 14px;

@@ -54,10 +54,10 @@
       "recommended": "建议用时"
     },
     "question": {
-      "playRecording": "🔊 播放录音",
-      "play": "🔊 播放",
-      "trueLabel": "✓ 对",
-      "falseLabel": "✗ 错",
+      "playRecording": "播放录音",
+      "play": "播放",
+      "trueLabel": "对",
+      "falseLabel": "错",
       "correctOrder": "正确顺序：",
       "orderStepPrefix": "第",
       "writePlaceholder": "请写出正确的句子…",
@@ -70,8 +70,8 @@
     "review": {
       "wordList": "词语：",
       "keyword": "关键词：",
-      "trueText": "✓ ถูก (对)",
-      "falseText": "✗ ผิด (错)"
+      "trueText": "ถูก (对)",
+      "falseText": "ผิด (错)"
     }
   },
   "results": {

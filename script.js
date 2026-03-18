@@ -127,9 +127,39 @@ const SECTION_TIME = {
   writing: 25 * 60,
 };
 const TIME_PER_Q = { listening: 40, reading: 60, writing: 100 };
+const ICONS = Object.freeze({
+  checklist: "mdi:clipboard-text-outline",
+  timer: "mdi:timer-outline",
+  listening: "mdi:headphones",
+  reading: "mdi:book-open-variant",
+  writing: "mdi:pencil-outline",
+  target: "mdi:target",
+  alert: "mdi:alert-rhombus-outline",
+  close: "mdi:close-circle-outline",
+  start: "mdi:rocket-launch-outline",
+  summary: "mdi:file-document-outline",
+  answered: "mdi:check-circle-outline",
+  unanswered: "mdi:alert-circle-outline",
+  skipped: "mdi:skip-next-circle-outline",
+  submit: "mdi:send-circle-outline",
+  trophy: "mdi:trophy-award",
+  medal: "mdi:medal-outline",
+  volume: "mdi:volume-high",
+  search: "mdi:magnify",
+  strength: "mdi:star-circle-outline",
+  improve: "mdi:trending-up",
+  focus: "mdi:bullseye-arrow",
+  tip: "mdi:lightbulb-on-outline",
+  chart: "mdi:chart-box-outline",
+  success: "mdi:check-circle-outline",
+  failure: "mdi:close-circle-outline",
+  help: "mdi:help-circle-outline",
+  restart: "mdi:refresh",
+  continue: "mdi:play-circle-outline",
+});
 const SECTION_LAYOUT = {
   listening: {
-    icon: "🎧",
+    icon: ICONS.listening,
     start: 0,
     end: 45,
     color: "#d32f2f",
@@ -141,7 +171,7 @@ const SECTION_LAYOUT = {
     ],
   },
   reading: {
-    icon: "📖",
+    icon: ICONS.reading,
     start: 45,
     end: 85,
     color: "#d32f2f",
@@ -153,7 +183,7 @@ const SECTION_LAYOUT = {
     ],
   },
   writing: {
-    icon: "✍️",
+    icon: ICONS.writing,
     start: 85,
     end: 100,
     color: "#d32f2f",
@@ -235,6 +265,31 @@ const setTextById = (id, value) => {
 const setHTMLById = (id, value) => {
   const el = document.getElementById(id);
   if (el && typeof value === "string") el.innerHTML = value;
+};
+
+const renderIcon = (icon, className = "", label = "") => {
+  const classes = ["ui-icon", className].filter(Boolean).join(" ");
+  const aria = label
+    ? ` role="img" aria-label="${escapeHTML(label)}"`
+    : ' aria-hidden="true"';
+  return `<iconify-icon icon="${escapeHTML(icon)}" class="${escapeHTML(classes)}"${aria}></iconify-icon>`;
+};
+
+const renderIconText = (icon, text, className = "", iconClass = "") =>
+  `<span class="${escapeHTML(["icon-text", className].filter(Boolean).join(" "))}">${renderIcon(icon, iconClass)}<span>${escapeHTML(text)}</span></span>`;
+
+const renderSectionText = (sectionKey, text, className = "", iconClass = "") =>
+  renderIconText(ICONS[sectionKey], text, className, iconClass);
+
+const renderQuestionStatement = (text) =>
+  `<div class="q-statement">${renderIcon(ICONS.help, "statement-icon")}<span>${escapeHTML(text)}</span></div>`;
+
+const feedback = (icon, text) => ({ icon, text });
+
+const renderFeedbackItem = (item) => {
+  const normalized =
+    typeof item === "string" ? feedback(ICONS.help, item) : item || {};
+  return `<li>${renderIcon(normalized.icon || ICONS.help, "feedback-icon")}<span>${escapeHTML(normalized.text || "")}</span></li>`;
 };
 
 function buildSectionsConfig(sectionContent = {}) {
@@ -658,25 +713,34 @@ function applyChineseUi() {
     "pageMainSubtitle",
     stripExamVariantLabel(getZhValue("page.subtitle", "")),
   );
-  setTextById(
+  setHTMLById(
     "navListeningLabel",
-    `🎧 ${getZhValue("page.nav.listening.label", "Listening")}`,
+    renderSectionText(
+      "listening",
+      getZhValue("page.nav.listening.label", "Listening"),
+    ),
   );
   setTextById(
     "navListeningSub",
     getZhValue("page.nav.listening.sub", "45 questions"),
   );
-  setTextById(
+  setHTMLById(
     "navReadingLabel",
-    `📖 ${getZhValue("page.nav.reading.label", "Reading")}`,
+    renderSectionText(
+      "reading",
+      getZhValue("page.nav.reading.label", "Reading"),
+    ),
   );
   setTextById(
     "navReadingSub",
     getZhValue("page.nav.reading.sub", "40 questions"),
   );
-  setTextById(
+  setHTMLById(
     "navWritingLabel",
-    `✍️ ${getZhValue("page.nav.writing.label", "Writing")}`,
+    renderSectionText(
+      "writing",
+      getZhValue("page.nav.writing.label", "Writing"),
+    ),
   );
   setTextById(
     "navWritingSub",
@@ -910,7 +974,9 @@ async function preloadAllAudio() {
   }
 
   _preloadDone = true;
-  if (labelEl) labelEl.innerHTML = "✅ โหลดเสียงครบแล้ว — พร้อมสอบ!";
+  if (labelEl) {
+    labelEl.innerHTML = `${renderIcon(ICONS.success)} โหลดเสียงครบแล้ว — พร้อมสอบ!`;
+  }
   if (statusEl) statusEl.classList.add("done");
   if (barEl) barEl.style.width = "100%";
 }
@@ -1218,7 +1284,7 @@ function renderQuestion() {
   let h = `<div class="q-card" style="margin-bottom: 20px;">
   <div class="q-header">
     <div class="q-progress-info">
-      <span class="section-badge" style="background:${sec.color}20; color:${sec.color}">${escapeHTML(sec.icon)} ${escapeHTML(sec.name)}</span>
+      <span class="section-badge" style="background:${sec.color}20; color:${sec.color}">${renderSectionText(currentSection, sec.name)}</span>
       <span class="part-name">${escapeHTML(displayPartName)}</span>
     </div>
     <div class="q-counter">${qNumInSec} / ${totalInSec}</div>
@@ -1240,11 +1306,11 @@ function renderQuestion() {
   if (q.type === "tf") {
     h += `<div class="q-top"><span class="q-num">${safeQid}</span>`;
     if (isListening) {
-      h += `<button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio, true)">${escapeHTML(getZhValue("ui.question.playRecording", "Play Audio"))}</button>`;
+      h += `<button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio, true)">${renderIcon(ICONS.volume)}<span>${escapeHTML(getZhValue("ui.question.playRecording", "Play Audio"))}</span></button>`;
     }
     h += `</div>`;
     h += `<div class="audio-text">${escapeHTML(q.audio)}</div>`;
-    h += `<div class="q-statement">★ ${escapeHTML(q.stmt)}</div>`;
+    h += renderQuestionStatement(q.stmt);
     h += `<div class="tf-opts">
       <div class="tf-btn${answers[safeQid] === true ? " selected" : ""}" onclick="selectAnswer(${safeQid},true,this)">${escapeHTML(getZhValue("ui.question.trueLabel", "True"))}</div>
       <div class="tf-btn${answers[safeQid] === false ? " selected" : ""}" onclick="selectAnswer(${safeQid},false,this)">${escapeHTML(getZhValue("ui.question.falseLabel", "False"))}</div>
@@ -1254,14 +1320,14 @@ function renderQuestion() {
     const labels = mcOptions.length <= 4 ? "ABCD" : "ABCDEF";
     h += `<div class="q-top"><span class="q-num">${safeQid}</span>`;
     if (isListening) {
-      h += `<button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio||ALL_Q[${currentIdx}].passage, true)">${escapeHTML(getZhValue("ui.question.play", "Play"))}</button>`;
+      h += `<button class="tts-btn" onclick="speak(ALL_Q[${currentIdx}].audio||ALL_Q[${currentIdx}].passage, true)">${renderIcon(ICONS.volume)}<span>${escapeHTML(getZhValue("ui.question.play", "Play"))}</span></button>`;
     }
     h += `</div>`;
     if (q.audio)
       h += `<div class="audio-text">${escapeHTMLWithBreaks(q.audio)}</div>`;
     if (q.passage) {
       h += `<div class="passage-text">${escapeHTMLWithBreaks(q.passage)}</div>`;
-      h += `<div class="q-statement">★ ${escapeHTML(q.question)}</div>`;
+      h += renderQuestionStatement(q.question);
     }
     h += `<div class="options">`;
     mcOptions.forEach((o, i) => {
@@ -1329,7 +1395,7 @@ function renderQuestion() {
 
   let nextIdx = currentIdx + 1;
   if (canFinishSection) {
-    h += `<button class="nav-btn-finish" onclick="finishSection()">จบ${escapeHTML(sec.name)} ✓</button>`;
+    h += `<button class="nav-btn-finish" onclick="finishSection()">${renderIcon(ICONS.success)}<span>จบ${escapeHTML(sec.name)}</span></button>`;
   } else if (nextIdx < sec.end) {
     h += `<button class="nav-btn-next" onclick="goQuestion(${nextIdx})">ข้อถัดไป →</button>`;
   } else {
@@ -1480,7 +1546,7 @@ function notifySectionIncomplete() {
   showInPageAlert(
     `ยังตอบไม่ครบในพาร์ทนี้ เหลืออีก ${progress.remaining} ข้อ (${progress.answered}/${progress.total}) กรุณาทำให้ครบก่อนจบพาร์ท`,
     "รับทราบ",
-    "⚠️ ยังตอบไม่ครบ",
+    "ยังตอบไม่ครบ",
   );
 }
 
@@ -1497,7 +1563,7 @@ function syncSectionActionButton() {
 
   if (progress.complete) {
     actionBtn.className = "nav-btn-finish";
-    actionBtn.textContent = `จบ${sec.name} ✓`;
+    actionBtn.innerHTML = `${renderIcon(ICONS.success)}<span>จบ${escapeHTML(sec.name)}</span>`;
     actionBtn.setAttribute("onclick", "finishSection()");
     return;
   }
@@ -1545,7 +1611,7 @@ function finishSection(reason = "manual") {
       showInPageAlert(
         `ยังตอบไม่ครบในพาร์ทนี้ เหลืออีก ${progress.remaining} ข้อ (${progress.answered}/${progress.total}) กรุณาทำให้ครบก่อนจบพาร์ท`,
         "รับทราบ",
-        "⚠️ ยังตอบไม่ครบ",
+        "ยังตอบไม่ครบ",
       );
       return;
     }
@@ -1596,9 +1662,9 @@ function finishSection(reason = "manual") {
 function showSubmitConfirmation() {
   // Count stats per section
   const sectionNames = {
-    listening: "🎧 การฟัง",
-    reading: "📖 การอ่าน",
-    writing: "✍️ การเขียน",
+    listening: renderSectionText("listening", "การฟัง"),
+    reading: renderSectionText("reading", "การอ่าน"),
+    writing: renderSectionText("writing", "การเขียน"),
   };
   let answeredCount = 0,
     unansweredCount = 0,
@@ -1630,12 +1696,12 @@ function showSubmitConfirmation() {
   overlay.id = "submitOverlay";
   overlay.innerHTML = `
           <div class="submit-modal">
-            <h3>📋 ยืนยันส่งคำตอบ</h3>
+            <h3>${renderIconText(ICONS.summary, "ยืนยันส่งคำตอบ")}</h3>
             <p style="color:var(--txt2);margin-bottom:12px;line-height:1.6">ตรวจสอบสรุปคำตอบก่อนส่ง — เมื่อส่งแล้วจะไม่สามารถแก้ไขได้</p>
             <div class="submit-summary-grid">
-              <div class="submit-stat"><div class="num" style="color:var(--green)">${answeredCount}</div><div class="lbl">✅ ตอบแล้ว</div></div>
-              <div class="submit-stat"><div class="num" style="color:var(--gold)">${unansweredCount}</div><div class="lbl">⚠️ ยังไม่ตอบ</div></div>
-              <div class="submit-stat"><div class="num" style="color:var(--red)">${skippedCount}</div><div class="lbl">⏭️ ถูกข้าม (หมดเวลา)</div></div>
+              <div class="submit-stat"><div class="num" style="color:var(--green)">${answeredCount}</div><div class="lbl">${renderIconText(ICONS.answered, "ตอบแล้ว")}</div></div>
+              <div class="submit-stat"><div class="num" style="color:var(--gold)">${unansweredCount}</div><div class="lbl">${renderIconText(ICONS.unanswered, "ยังไม่ตอบ")}</div></div>
+              <div class="submit-stat"><div class="num" style="color:var(--red)">${skippedCount}</div><div class="lbl">${renderIconText(ICONS.skipped, "ถูกข้าม (หมดเวลา)")}</div></div>
             </div>
             <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:0.88em">
               <tr style="background:#f8f9fa">
@@ -1655,8 +1721,8 @@ function showSubmitConfirmation() {
                 )
                 .join("")}
             </table>
-            ${unansweredCount > 0 ? `<div class="submit-warning">⚠️ คุณยังมีข้อที่ยังไม่ได้ตอบอีก <strong>${unansweredCount} ข้อ</strong> ข้อที่ไม่ตอบจะถูกนับเป็นคำตอบผิด</div>` : ""}
-            <button class="btn-submit-final confirm" onclick="confirmSubmit()">📤 ส่งคำตอบสุดท้าย</button>
+            ${unansweredCount > 0 ? `<div class="submit-warning">${renderIconText(ICONS.unanswered, `คุณยังมีข้อที่ยังไม่ได้ตอบอีก ${unansweredCount} ข้อ`)} ข้อที่ไม่ตอบจะถูกนับเป็นคำตอบผิด</div>` : ""}
+            <button class="btn-submit-final confirm" onclick="confirmSubmit()">${renderIcon(ICONS.submit)}<span>ส่งคำตอบสุดท้าย</span></button>
             <button class="btn-submit-final cancel" onclick="cancelSubmit()">← ตรวจสอบอีกครั้ง</button>
           </div>
         `;
@@ -1842,22 +1908,22 @@ function showResults() {
   const passed = totalScore >= 180;
 
   // Grade bands
-  let gradeLabel, gradeEmoji;
+  let gradeLabel, gradeIcon;
   if (totalScore >= 270) {
     gradeLabel = `ดีเยี่ยม (${getZhValue("results.gradeBands.excellent", "Excellent")})`;
-    gradeEmoji = "🏅";
+    gradeIcon = ICONS.trophy;
   } else if (totalScore >= 240) {
     gradeLabel = `ดีมาก (${getZhValue("results.gradeBands.good", "Good")})`;
-    gradeEmoji = "🥇";
+    gradeIcon = ICONS.medal;
   } else if (totalScore >= 210) {
     gradeLabel = `ดี (${getZhValue("results.gradeBands.passPlus", "Pass+")})`;
-    gradeEmoji = "🥈";
+    gradeIcon = ICONS.strength;
   } else if (totalScore >= 180) {
     gradeLabel = `ผ่าน (${getZhValue("results.gradeBands.pass", "Pass")})`;
-    gradeEmoji = "🥉";
+    gradeIcon = ICONS.success;
   } else {
     gradeLabel = `ไม่ผ่าน (${getZhValue("results.gradeBands.fail", "Fail")})`;
-    gradeEmoji = "📕";
+    gradeIcon = ICONS.failure;
   }
 
   const totalC = listenC + readC + writeC;
@@ -1887,72 +1953,114 @@ function showResults() {
   // Listening analysis
   if (listenPct >= 80)
     strengths.push(
-      "🎧 ทักษะการฟังดีเยี่ยม — จับใจความสำคัญได้แม่นยำ สามารถเข้าใจบทสนทนาและเรื่องสั้นได้ดี",
+      feedback(
+        ICONS.listening,
+        "ทักษะการฟังดีเยี่ยม — จับใจความสำคัญได้แม่นยำ สามารถเข้าใจบทสนทนาและเรื่องสั้นได้ดี",
+      ),
     );
   else if (listenPct >= 60)
     strengths.push(
-      "🎧 ทักษะการฟังอยู่ในเกณฑ์ผ่าน — ยังมีจุดที่พัฒนาได้ เน้นฟังคำสำคัญและตัวเลข",
+      feedback(
+        ICONS.listening,
+        "ทักษะการฟังอยู่ในเกณฑ์ผ่าน — ยังมีจุดที่พัฒนาได้ เน้นฟังคำสำคัญและตัวเลข",
+      ),
     );
   else
     improvements.push(
-      "🎧 ทักษะการฟังต้องเสริม — แนะนำฟังพอดแคสต์จีน, ดูซีรีส์จีนซับจีน, ฝึกจับใจความจากบทสนทนาสั้น",
+      feedback(
+        ICONS.listening,
+        "ทักษะการฟังต้องเสริม — แนะนำฟังพอดแคสต์จีน, ดูซีรีส์จีนซับจีน, ฝึกจับใจความจากบทสนทนาสั้น",
+      ),
     );
 
   // Reading analysis
   if (readPct >= 80)
     strengths.push(
-      "📖 ทักษะการอ่านแข็งแกร่ง — เข้าใจเนื้อหาบทความและจับรายละเอียดได้ดี",
+      feedback(
+        ICONS.reading,
+        "ทักษะการอ่านแข็งแกร่ง — เข้าใจเนื้อหาบทความและจับรายละเอียดได้ดี",
+      ),
     );
   else if (readPct >= 60)
     strengths.push(
-      "📖 ทักษะการอ่านอยู่ในเกณฑ์ผ่าน — ควรเสริมด้วยการอ่านบทความสั้นเพิ่มเติม",
+      feedback(
+        ICONS.reading,
+        "ทักษะการอ่านอยู่ในเกณฑ์ผ่าน — ควรเสริมด้วยการอ่านบทความสั้นเพิ่มเติม",
+      ),
     );
   else
     improvements.push(
-      "📖 ทักษะการอ่านต้องพัฒนา — แนะนำอ่านบทความสั้นระดับ HSK4 ทุกวัน ฝึกหาคำตอบจากเนื้อหาอย่างรวดเร็ว",
+      feedback(
+        ICONS.reading,
+        "ทักษะการอ่านต้องพัฒนา — แนะนำอ่านบทความสั้นระดับ HSK4 ทุกวัน ฝึกหาคำตอบจากเนื้อหาอย่างรวดเร็ว",
+      ),
     );
 
   // Writing analysis
   if (writePct >= 70)
     strengths.push(
-      "✍️ ทักษะการเขียนดีมาก — เข้าใจโครงสร้างประโยคจีนและใช้ไวยากรณ์ได้ถูกต้อง",
+      feedback(
+        ICONS.writing,
+        "ทักษะการเขียนดีมาก — เข้าใจโครงสร้างประโยคจีนและใช้ไวยากรณ์ได้ถูกต้อง",
+      ),
     );
   else if (writePct >= 50)
     strengths.push(
-      `✍️ ทักษะการเขียนอยู่ในเกณฑ์พอใช้ — ทบทวนโครงสร้าง ${getZhValue("results.writingTerms.fair", "Chinese writing structures")}`,
+      feedback(
+        ICONS.writing,
+        `ทักษะการเขียนอยู่ในเกณฑ์พอใช้ — ทบทวนโครงสร้าง ${getZhValue("results.writingTerms.fair", "Chinese writing structures")}`,
+      ),
     );
   else
     improvements.push(
-      `✍️ ทักษะการเขียนต้องเสริม — ฝึกเขียนประโยคจีนทุกวัน ทบทวน ${getZhValue("results.writingTerms.improve", "Chinese writing structures")}`,
+      feedback(
+        ICONS.writing,
+        `ทักษะการเขียนต้องเสริม — ฝึกเขียนประโยคจีนทุกวัน ทบทวน ${getZhValue("results.writingTerms.improve", "Chinese writing structures")}`,
+      ),
     );
 
   // Time management
   if (avgListen <= 30)
     strengths.push(
-      "⏱️ ตอบข้อฟังเร็วมาก (เฉลี่ย " +
-        avgListen +
-        " วิ/ข้อ) — จับประเด็นได้รวดเร็ว",
+      feedback(
+        ICONS.timer,
+        "ตอบข้อฟังเร็วมาก (เฉลี่ย " +
+          avgListen +
+          " วิ/ข้อ) — จับประเด็นได้รวดเร็ว",
+      ),
     );
   else if (avgListen <= 40)
     strengths.push(
-      "⏱️ ความเร็วการฟังอยู่ในเกณฑ์ดี (เฉลี่ย " + avgListen + " วิ/ข้อ)",
+      feedback(
+        ICONS.timer,
+        "ความเร็วการฟังอยู่ในเกณฑ์ดี (เฉลี่ย " + avgListen + " วิ/ข้อ)",
+      ),
     );
   else if (avgListen > 50)
     improvements.push(
-      "⏱️ ตอบข้อฟังช้าเกินไป (เฉลี่ย " +
-        avgListen +
-        " วิ/ข้อ, แนะนำ ≤40 วิ) — ฝึกตัดสินใจเร็วขึ้น",
+      feedback(
+        ICONS.timer,
+        "ตอบข้อฟังช้าเกินไป (เฉลี่ย " +
+          avgListen +
+          " วิ/ข้อ, แนะนำ ≤40 วิ) — ฝึกตัดสินใจเร็วขึ้น",
+      ),
     );
 
   if (avgRead <= 45)
     strengths.push(
-      "⏱️ ความเร็วการอ่านดีเยี่ยม (เฉลี่ย " + avgRead + " วิ/ข้อ)",
+      feedback(
+        ICONS.timer,
+        "ความเร็วการอ่านดีเยี่ยม (เฉลี่ย " + avgRead + " วิ/ข้อ)",
+      ),
     );
   else if (avgRead > 75)
     improvements.push(
-      "⏱️ ตอบข้ออ่านช้าเกินไป (เฉลี่ย " +
-        avgRead +
-        " วิ/ข้อ, แนะนำ ≤60 วิ) — ฝึก skimming เพื่อหาคำตอบเร็วขึ้น",
+      feedback(
+        ICONS.timer,
+        "ตอบข้ออ่านช้าเกินไป (เฉลี่ย " +
+          avgRead +
+          " วิ/ข้อ, แนะนำ ≤60 วิ) — ฝึก skimming เพื่อหาคำตอบเร็วขึ้น",
+      ),
     );
 
   // Part-specific feedback
@@ -1961,22 +2069,34 @@ function showResults() {
     const pName = PART_NAMES[key] || key;
     if (pPct <= 40 && ps.total >= 5) {
       improvements.push(
-        `📌 ส่วน ${pName}: ตอบถูกเพียง ${ps.correct}/${ps.total} (${pPct}%) — ควรฝึกส่วนนี้เพิ่มเป็นพิเศษ`,
+        feedback(
+          ICONS.focus,
+          `ส่วน ${pName}: ตอบถูกเพียง ${ps.correct}/${ps.total} (${pPct}%) — ควรฝึกส่วนนี้เพิ่มเป็นพิเศษ`,
+        ),
       );
     } else if (pPct >= 90 && ps.total >= 5) {
       strengths.push(
-        `📌 ส่วน ${pName}: ตอบถูก ${ps.correct}/${ps.total} (${pPct}%) — ยอดเยี่ยม!`,
+        feedback(
+          ICONS.focus,
+          `ส่วน ${pName}: ตอบถูก ${ps.correct}/${ps.total} (${pPct}%) — ยอดเยี่ยม!`,
+        ),
       );
     }
   });
 
   if (!strengths.length)
     strengths.push(
-      "👏 สำเร็จ! ทำข้อสอบ HSK4 ครบทุกข้อ — การลงมือทำคือก้าวแรกที่ดี สู้ต่อไป!",
+      feedback(
+        ICONS.success,
+        "สำเร็จ! ทำข้อสอบ HSK4 ครบทุกข้อ — การลงมือทำคือก้าวแรกที่ดี สู้ต่อไป!",
+      ),
     );
   if (!improvements.length)
     improvements.push(
-      "📈 ผลรวมอยู่ในเกณฑ์ดีแล้ว ให้คงความสม่ำเสมอและทบทวนจุดเล็ก ๆ ที่พลาดเพื่อดันคะแนนให้สูงขึ้น",
+      feedback(
+        ICONS.improve,
+        "ผลรวมอยู่ในเกณฑ์ดีแล้ว ให้คงความสม่ำเสมอและทบทวนจุดเล็ก ๆ ที่พลาดเพื่อดันคะแนนให้สูงขึ้น",
+      ),
     );
 
   // Score ring color
@@ -1992,7 +2112,7 @@ function showResults() {
     : "โฟกัสพาร์ตที่ได้ต่ำกว่า 60% ก่อน แล้วฝึกชุดสั้นแบบจับเวลา 20-30 นาทีต่อวัน จะเห็นพัฒนาการเร็วขึ้น";
 
   // Build Skill Analysis table
-  let skillHtml = `<div class="skill-analysis"><h4>📊 การวิเคราะห์ตามทักษะ</h4>
+  let skillHtml = `<div class="skill-analysis"><h4>${renderIconText(ICONS.chart, "การวิเคราะห์ตามทักษะ")}</h4>
         <table class="skill-table">
           <tr><th>ทักษะ</th><th>ถูก/ทั้งหมด</th><th>เปอร์เซ็นต์</th><th>กราฟ</th></tr>`;
   Object.entries(partStats).forEach(([key, ps]) => {
@@ -2016,7 +2136,7 @@ function showResults() {
 
   document.getElementById("questionArea").innerHTML = `
 <div class="results-panel">
-  <h2 style="text-align:center;margin-bottom:6px">📊 สรุปผลสอบ HSK 4</h2>
+  <h2 style="text-align:center;margin-bottom:6px">${renderIconText(ICONS.chart, "สรุปผลสอบ HSK 4")}</h2>
   <h3 style="text-align:center;color:var(--accent);margin-bottom:14px">ผู้เข้าสอบ: ${escapeHTML(document.getElementById("userNameInput").value || "ไม่ระบุชื่อ")}</h3>
 
   <div class="summary-callout ${passed ? "pass" : "fail"}">
@@ -2030,28 +2150,28 @@ function showResults() {
   </svg><div class="score-val" style="color:${color}">${totalScore}</div></div>
   <p class="summary-note" style="text-align:center">คะแนนรวม ${totalScore} / 300 คะแนน</p>
   <div style="text-align:center;margin:10px 0">
-    <span class="grade-badge ${passed ? "pass" : "fail"}">${passed ? "🏆 ผ่านเกณฑ์" : "❌ ไม่ผ่านเกณฑ์"} (เกณฑ์ผ่าน 180 คะแนน)</span>
+    <span class="grade-badge ${passed ? "pass" : "fail"}">${renderIcon(passed ? ICONS.trophy : ICONS.failure)}<span>${passed ? "ผ่านเกณฑ์" : "ไม่ผ่านเกณฑ์"} (เกณฑ์ผ่าน 180 คะแนน)</span></span>
   </div>
-  <p style="text-align:center;margin-bottom:4px" class="grade-label">${gradeEmoji} ระดับผลสอบ: <strong>${gradeLabel}</strong></p>
+  <p style="text-align:center;margin-bottom:4px" class="grade-label">${renderIcon(gradeIcon)} ระดับผลสอบ: <strong>${gradeLabel}</strong></p>
   <p class="summary-note" style="text-align:center">เวลาที่ใช้ ${totalMin} นาที ${totalSec} วินาที · ตอบถูก ${totalC}/100 ข้อ${skippedCount > 0 ? " · ถูกข้าม " + skippedCount + " ข้อ" : ""}</p>
 
   <div class="score-official">
     <div class="score-off-card">
-      <div class="sec-label">🎧 การฟัง</div>
+      <div class="sec-label">${renderSectionText("listening", "การฟัง")}</div>
       <div class="pts" style="color:${sColor(listenScore)}">${listenScore}</div>
       <div class="max">/ 100 คะแนน</div>
       <div class="section-meta">ตอบถูก ${listenC}/${listenT} ข้อ · เฉลี่ย ${avgListen} วิ/ข้อ</div>
       <div class="bar-wrap"><div class="bar-fill" style="width:${listenScore}%;background:${sColor(listenScore)}"></div></div>
     </div>
     <div class="score-off-card">
-      <div class="sec-label">📖 การอ่าน</div>
+      <div class="sec-label">${renderSectionText("reading", "การอ่าน")}</div>
       <div class="pts" style="color:${sColor(readScore)}">${readScore}</div>
       <div class="max">/ 100 คะแนน</div>
       <div class="section-meta">ตอบถูก ${readC}/${readT} ข้อ · เฉลี่ย ${avgRead} วิ/ข้อ</div>
       <div class="bar-wrap"><div class="bar-fill" style="width:${readScore}%;background:${sColor(readScore)}"></div></div>
     </div>
     <div class="score-off-card">
-      <div class="sec-label">✍️ การเขียน</div>
+      <div class="sec-label">${renderSectionText("writing", "การเขียน")}</div>
       <div class="pts" style="color:${sColor(writeScore)}">${writeScore}</div>
       <div class="max">/ 100 คะแนน</div>
       <div class="section-meta">ตอบถูก ${writeC}/${writeT} ข้อ · เฉลี่ย ${avgWrite} วิ/ข้อ</div>
@@ -2061,23 +2181,24 @@ function showResults() {
 
   ${skillHtml}
 
-  <div class="feedback-card strength"><h4 style="color:var(--green)">🌟 จุดแข็งที่ทำได้ดี</h4><ul>${strengths.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
-  <div class="feedback-card improve"><h4 style="color:var(--red)">📈 จุดที่ควรโฟกัสต่อ</h4><ul>${improvements.map((s) => "<li>" + escapeHTML(s) + "</li>").join("")}</ul></div>
+  <div class="feedback-card strength"><h4 style="color:var(--green)">${renderIconText(ICONS.strength, "จุดแข็งที่ทำได้ดี")}</h4><ul>${strengths.map((item) => renderFeedbackItem(item)).join("")}</ul></div>
+  <div class="feedback-card improve"><h4 style="color:var(--red)">${renderIconText(ICONS.improve, "จุดที่ควรโฟกัสต่อ")}</h4><ul>${improvements.map((item) => renderFeedbackItem(item)).join("")}</ul></div>
 
   <div style="text-align:center;margin:20px 0">
-    <button class="tts-btn" style="font-size:1em;padding:12px 24px" onclick="speak('รายงานผลสอบ HSK 4 ของคุณ คะแนนรวม ${totalScore} จาก 300 คะแนน คะแนนการฟัง ${listenScore} คะแนน คะแนนการอ่าน ${readScore} คะแนน และคะแนนการเขียน ${writeScore} คะแนน ${passed ? "ยินดีด้วย คุณผ่านเกณฑ์แล้ว" : "ยังไม่ผ่านเกณฑ์ในครั้งนี้ สู้ต่ออีกนิดนะ"}', true, 'th')">🔊 ฟังรายงานผล</button>
+    <button class="tts-btn" style="font-size:1em;padding:12px 24px" onclick="speak('รายงานผลสอบ HSK 4 ของคุณ คะแนนรวม ${totalScore} จาก 300 คะแนน คะแนนการฟัง ${listenScore} คะแนน คะแนนการอ่าน ${readScore} คะแนน และคะแนนการเขียน ${writeScore} คะแนน ${passed ? "ยินดีด้วย คุณผ่านเกณฑ์แล้ว" : "ยังไม่ผ่านเกณฑ์ในครั้งนี้ สู้ต่ออีกนิดนะ"}', true, 'th')">${renderIcon(ICONS.volume)}<span>ฟังรายงานผล</span></button>
   </div>
 
-  <h3 style="margin:30px 0 15px;text-align:center">📝 เฉลยคำตอบโดยละเอียด</h3>
+  <h3 style="margin:30px 0 15px;text-align:center">${renderIconText(ICONS.checklist, "เฉลยคำตอบโดยละเอียด")}</h3>
 
-  <div style="margin: 0 auto 20px; max-width: 400px; text-align: center;">
-    <input type="text" id="reviewSearchInput" placeholder="🔍 ค้นหาโจทย์, คำตอบ, หรือคำอธิบาย..." style="width:100%; padding:12px 16px; border-radius:12px; border:1px solid #e5e7eb; font-size:1em; outline:none;" onkeyup="filterReviews()">
+  <div class="review-search-wrap" style="margin: 0 auto 20px; max-width: 400px; text-align: center;">
+    ${renderIcon(ICONS.search, "search-field-icon")}
+    <input type="text" id="reviewSearchInput" placeholder="ค้นหาโจทย์, คำตอบ, หรือคำอธิบาย..." style="width:100%; padding:12px 16px; border-radius:12px; border:1px solid #e5e7eb; font-size:1em; outline:none;" onkeyup="filterReviews()">
   </div>
 
   <div class="review-tabs">
-    <button class="rev-tab active" onclick="showReview('listening',this)">🎧 การฟัง (${listenC}/${listenT})</button>
-    <button class="rev-tab" onclick="showReview('reading',this)">📖 การอ่าน (${readC}/${readT})</button>
-    <button class="rev-tab" onclick="showReview('writing',this)">✍️ การเขียน (${writeC}/${writeT})</button>
+    <button class="rev-tab active" onclick="showReview('listening',this)">${renderSectionText("listening", `การฟัง (${listenC}/${listenT})`)}</button>
+    <button class="rev-tab" onclick="showReview('reading',this)">${renderSectionText("reading", `การอ่าน (${readC}/${readT})`)}</button>
+    <button class="rev-tab" onclick="showReview('writing',this)">${renderSectionText("writing", `การเขียน (${writeC}/${writeT})`)}</button>
   </div>
   <div id="reviewArea"></div>
 </div>`;
@@ -2103,12 +2224,12 @@ function showReview(section, btn) {
       q._userAns === undefined || q._userAns === null || q._userAns === "";
     const isSkipped = skippedQs.has(q.id);
     const icon = isSkipped
-      ? "⏭️"
+      ? ICONS.skipped
       : isUnanswered
-        ? "⚠️"
+        ? ICONS.unanswered
         : q._correct
-          ? "✅"
-          : "❌";
+          ? ICONS.success
+          : ICONS.failure;
     const cls = isSkipped
       ? "wrong"
       : isUnanswered
@@ -2124,7 +2245,7 @@ function showReview(section, btn) {
     h += `<div class="review-card ${cls}">
       <div class="rev-header">
         <span class="q-num">${safeReviewQid}</span>
-        <span class="rev-icon">${icon}</span>
+        <span class="rev-icon">${renderIcon(icon)}</span>
         <span class="rev-difficulty ${escapeHTML(diff.cls)}">${escapeHTML(diff.label)}</span>
         <span class="rev-time">${safeReviewTime}s</span>
       </div>`;
@@ -2133,9 +2254,8 @@ function showReview(section, btn) {
       h += `<p class="rev-text">${escapeHTMLWithBreaks(q.audio)}</p>`;
     if (q.passage)
       h += `<p class="rev-text">${escapeHTMLWithBreaks(q.passage)}</p>`;
-    if (q.stmt) h += `<div class="q-statement">★ ${escapeHTML(q.stmt)}</div>`;
-    if (q.question)
-      h += `<div class="q-statement">★ ${escapeHTML(q.question)}</div>`;
+    if (q.stmt) h += renderQuestionStatement(q.stmt);
+    if (q.question) h += renderQuestionStatement(q.question);
     if (q.text) h += `<p class="rev-text">${escapeHTML(q.text)}</p>`;
     if (Array.isArray(q.words))
       h += `<p class="rev-text">${escapeHTML(getZhValue("ui.review.wordList", "Words:"))}${q.words.map((w) => escapeHTML(w)).join("　")}</p>`;
@@ -2145,7 +2265,7 @@ function showReview(section, btn) {
     // Show answer info
     const cAns = getCanonicalAnswer(q.id);
     if (q.type === "tf") {
-      h += `<p class="rev-ans">คำตอบของคุณ：<b>${q._userAns === true ? escapeHTML(getZhValue("ui.review.trueText", "✓ ถูก")) : q._userAns === false ? escapeHTML(getZhValue("ui.review.falseText", "✗ ผิด")) : "ไม่ได้ตอบ"}</b> ｜ คำตอบที่ถูก：<b>${cAns ? escapeHTML(getZhValue("ui.review.trueText", "✓ ถูก")) : escapeHTML(getZhValue("ui.review.falseText", "✗ ผิด"))}</b></p>`;
+      h += `<p class="rev-ans">คำตอบของคุณ：<b>${q._userAns === true ? escapeHTML(getZhValue("ui.review.trueText", "ถูก")) : q._userAns === false ? escapeHTML(getZhValue("ui.review.falseText", "ผิด")) : "ไม่ได้ตอบ"}</b> ｜ คำตอบที่ถูก：<b>${cAns ? escapeHTML(getZhValue("ui.review.trueText", "ถูก")) : escapeHTML(getZhValue("ui.review.falseText", "ผิด"))}</b></p>`;
     } else if (q.type === "mc" || q.type === "fill") {
       const labels = Array.isArray(q.opts) ? "ABCD" : "ABCDEF";
       const optsArr = Array.isArray(q.opts)
@@ -2175,27 +2295,27 @@ function showReview(section, btn) {
     // Enhanced explanation box
     if (isSkipped) {
       h += `<div class="rev-exp-box skipped">
-              <h5>⏭️ ข้อนี้ถูกข้ามเพราะหมดเวลา</h5>
-              <div class="why-correct">✅ คำตอบที่ถูกต้อง: ${safeExp}</div>
-              <div class="exp-detail">💡 เคล็ดลับ: ฝึกตอบให้เร็วขึ้นโดยจับคำสำคัญ (keywords) ในโจทย์</div>
+              <h5>${renderIconText(ICONS.skipped, "ข้อนี้ถูกข้ามเพราะหมดเวลา")}</h5>
+              <div class="why-correct">${renderIcon(ICONS.success)}<span>คำตอบที่ถูกต้อง: ${safeExp}</span></div>
+              <div class="exp-detail">${renderIcon(ICONS.tip)}<span>เคล็ดลับ: ฝึกตอบให้เร็วขึ้นโดยจับคำสำคัญ (keywords) ในโจทย์</span></div>
             </div>`;
     } else if (isUnanswered) {
       h += `<div class="rev-exp-box skipped">
-              <h5>⚠️ ไม่ได้ตอบข้อนี้</h5>
-              <div class="why-correct">✅ คำตอบที่ถูกต้อง: ${safeExp}</div>
-              <div class="exp-detail">💡 ในการสอบจริง ควรตอบทุกข้อแม้ไม่มั่นใจ เพราะไม่มีคะแนนติดลบ</div>
+              <h5>${renderIconText(ICONS.unanswered, "ไม่ได้ตอบข้อนี้")}</h5>
+              <div class="why-correct">${renderIcon(ICONS.success)}<span>คำตอบที่ถูกต้อง: ${safeExp}</span></div>
+              <div class="exp-detail">${renderIcon(ICONS.tip)}<span>ในการสอบจริง ควรตอบทุกข้อแม้ไม่มั่นใจ เพราะไม่มีคะแนนติดลบ</span></div>
             </div>`;
     } else if (q._correct) {
       h += `<div class="rev-exp-box correct">
-              <h5>✅ ตอบถูก! เก่งมาก!</h5>
+              <h5>${renderIconText(ICONS.success, "ตอบถูก! เก่งมาก!")}</h5>
               <div class="why-correct">${safeExp}</div>
             </div>`;
     } else {
       h += `<div class="rev-exp-box wrong">
-              <h5>❌ ตอบผิด</h5>
-              <div class="why-wrong">🔴 ทำไมผิด: ${escapeHTML(getWhyWrongThai(q, q._userAns))}</div>
-              <div class="why-correct">🟢 คำตอบที่ถูก: ${safeExp}</div>
-              <div class="exp-detail">💡 จดจำจุดนี้ไว้ แล้วฝึกทำข้อแบบเดียวกันอีกครั้ง</div>
+              <h5>${renderIconText(ICONS.failure, "ตอบผิด")}</h5>
+              <div class="why-wrong">${renderIcon(ICONS.failure)}<span>ทำไมผิด: ${escapeHTML(getWhyWrongThai(q, q._userAns))}</span></div>
+              <div class="why-correct">${renderIcon(ICONS.success)}<span>คำตอบที่ถูก: ${safeExp}</span></div>
+              <div class="exp-detail">${renderIcon(ICONS.tip)}<span>จดจำจุดนี้ไว้ แล้วฝึกทำข้อแบบเดียวกันอีกครั้ง</span></div>
             </div>`;
     }
 
@@ -2240,7 +2360,7 @@ function showInPageAlert(message, okText = "ตกลง", title = "แจ้ง
     overlay.style.zIndex = "10050";
     overlay.innerHTML = `
             <div class="submit-modal" style="max-width:420px">
-              <h3 style="margin-bottom:10px">${escapeHTML(title)}</h3>
+              <h3 style="margin-bottom:10px">${renderIconText(ICONS.alert, title)}</h3>
               <p style="color:var(--txt2);line-height:1.6;margin-bottom:12px">${escapeHTML(message)}</p>
               <button class="btn-submit-final confirm" id="customAlertOk">${escapeHTML(okText)}</button>
             </div>
@@ -2277,7 +2397,7 @@ function showInPageConfirm(
     overlay.style.zIndex = "10050";
     overlay.innerHTML = `
             <div class="submit-modal" style="max-width:420px">
-              <h3 style="margin-bottom:10px">⚠️ ยืนยันการดำเนินการ</h3>
+              <h3 style="margin-bottom:10px">${renderIconText(ICONS.alert, "ยืนยันการดำเนินการ")}</h3>
               <p style="color:var(--txt2);line-height:1.6;margin-bottom:10px">${escapeHTML(message)}</p>
               <button class="btn-submit-final confirm" id="customConfirmOk">${escapeHTML(confirmText)}</button>
               <button class="btn-submit-final cancel" id="customConfirmCancel">${escapeHTML(cancelText)}</button>
@@ -2311,12 +2431,12 @@ function showResumeModal() {
   overlay.id = "resumeModalOverlay";
   overlay.innerHTML = `
           <div class="resume-modal">
-            <h3 style="color:var(--red);margin-bottom:12px;font-size:1.3em;">📝 พบข้อมูลทำแบบทดสอบค้างไว้</h3>
+            <h3 style="color:var(--red);margin-bottom:12px;font-size:1.3em;">${renderIconText(ICONS.summary, "พบข้อมูลทำแบบทดสอบค้างไว้")}</h3>
             <p style="color:var(--txt2);margin-bottom:24px;line-height:1.5;">
               คุณ <b>${escapeHTML(userName)}</b> มีแบบทดสอบที่ยังทำไม่เสร็จ<br>ต้องการทำต่อจากจุดเดิมหรือไม่?
             </p>
-            <button class="resume-btn btn-continue" id="resumeContinueBtn">▶ ทำข้อสอบต่อ</button>
-            <button class="resume-btn btn-restart" id="resumeRestartBtn">🔄 เริ่มทำใหม่ทั้งหมด (ลบข้อมูลเดิม)</button>
+            <button class="resume-btn btn-continue" id="resumeContinueBtn">${renderIcon(ICONS.continue)}<span>ทำข้อสอบต่อ</span></button>
+            <button class="resume-btn btn-restart" id="resumeRestartBtn">${renderIcon(ICONS.restart)}<span>เริ่มทำใหม่ทั้งหมด (ลบข้อมูลเดิม)</span></button>
           </div>
         `;
   document.body.appendChild(overlay);
