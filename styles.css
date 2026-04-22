@@ -971,6 +971,59 @@ body::before {
   border-radius: 12px;
   margin: 10px 0;
 }
+.question-hint {
+  color: var(--txt2);
+  font-size: 0.95em;
+  margin: 8px 0 14px;
+}
+.question-image-block {
+  display: grid;
+  place-items: center;
+  margin: 0 0 18px;
+}
+.question-image-frame {
+  width: min(100%, 420px);
+  padding: clamp(10px, 1.8vw, 14px);
+  border-radius: 20px;
+  border: 1px solid rgba(183, 28, 28, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 244, 0.98), rgba(255, 255, 255, 0.92)),
+    radial-gradient(circle at top, rgba(183, 28, 28, 0.08), transparent 55%);
+  box-shadow: 0 14px 28px rgba(127, 0, 0, 0.08);
+}
+.question-image-block.is-portrait .question-image-frame {
+  width: min(100%, 320px);
+}
+.question-image-block.is-landscape .question-image-frame {
+  width: min(100%, 560px);
+}
+.question-image-block.is-square .question-image-frame {
+  width: min(100%, 380px);
+}
+.question-image-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(52vh, 420px);
+  margin: 0 auto;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #fff;
+}
+.question-image-block.is-review {
+  margin-top: 12px;
+}
+.question-image-block.is-review .question-image-frame {
+  width: min(100%, 300px);
+  padding: 10px;
+  border-radius: 16px;
+}
+.question-image-block.is-review.is-landscape .question-image-frame {
+  width: min(100%, 420px);
+}
+.question-image-block.is-review .question-image-frame img {
+  max-height: min(34vh, 280px);
+}
 /* Order */
 .order-sents {
   margin: 12px 0;
@@ -1752,6 +1805,17 @@ a {
   }
   .site-footer-inner {
     grid-template-columns: 1fr;
+  }
+  .question-image-frame,
+  .question-image-block.is-portrait .question-image-frame,
+  .question-image-block.is-landscape .question-image-frame,
+  .question-image-block.is-square .question-image-frame,
+  .question-image-block.is-review .question-image-frame,
+  .question-image-block.is-review.is-landscape .question-image-frame {
+    width: 100%;
+  }
+  .question-image-frame img {
+    max-height: min(46svh, 360px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

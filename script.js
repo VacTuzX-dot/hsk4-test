@@ -284,6 +284,71 @@ const renderSectionText = (sectionKey, text, className = "", iconClass = "") =>
 const renderQuestionStatement = (text) =>
   `<div class="q-statement">${renderIcon(ICONS.help, "statement-icon")}<span>${escapeHTML(text)}</span></div>`;
 
+const sanitizeRelativeAssetPath = (value) => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("/") || trimmed.includes("..")) return "";
+  return /^[A-Za-z0-9/_\-.]+$/.test(trimmed) ? trimmed : "";
+};
+
+const getQuestionImageMeta = (question) => {
+  if (!isPlainObject(question?.image)) return null;
+
+  const src = sanitizeRelativeAssetPath(question.image.src);
+  if (!src) return null;
+
+  const rawWidth = Number(question.image.width);
+  const rawHeight = Number(question.image.height);
+  const width = Number.isFinite(rawWidth)
+    ? clampInt(rawWidth, 1, 4000, 0)
+    : 0;
+  const height = Number.isFinite(rawHeight)
+    ? clampInt(rawHeight, 1, 4000, 0)
+    : 0;
+  const alt =
+    typeof question.image.alt === "string" && question.image.alt.trim()
+      ? question.image.alt.trim()
+      : typeof question.word === "string" && question.word.trim()
+        ? `图片提示：${question.word.trim()}`
+        : "图片提示";
+
+  let orientation = "square";
+  if (width > 0 && height > 0) {
+    if (width / height >= 1.15) orientation = "landscape";
+    else if (height / width >= 1.15) orientation = "portrait";
+  }
+
+  return { src, width, height, alt, orientation };
+};
+
+const renderQuestionImage = (question, options = {}) => {
+  const image = getQuestionImageMeta(question);
+  if (!image) return "";
+
+  const { review = false } = options;
+  const classes = [
+    "question-image-block",
+    `is-${image.orientation}`,
+    review ? "is-review" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const widthAttr = image.width > 0 ? ` width="${image.width}"` : "";
+  const heightAttr = image.height > 0 ? ` height="${image.height}"` : "";
+  const loadingMode = review ? "lazy" : "eager";
+
+  return `<figure class="${escapeHTML(classes)}">
+    <div class="question-image-frame">
+      <img
+        src="${escapeHTML(image.src)}"
+        alt="${escapeHTML(image.alt)}"${widthAttr}${heightAttr}
+        loading="${loadingMode}"
+        decoding="async"
+      >
+    </div>
+  </figure>`;
+};
+
 const feedback = (icon, text) => ({ icon, text });
 
 const renderFeedbackItem = (item) => {
@@ -1379,7 +1444,8 @@ function renderQuestion() {
     );
     h += `<span class="q-num">${safeQid}</span>`;
     h += `<div class="word-highlight">${escapeHTML(q.word)}</div>`;
-    h += `<p style="color:var(--txt2);font-size:.9em;margin:8px 0">${escapeHTML(q.hint)}</p>`;
+    h += `<p class="question-hint">${escapeHTML(q.hint)}</p>`;
+    h += renderQuestionImage(q);
     h += `<textarea class="write-input" rows="2" maxlength="${MAX_FREE_ANSWER_LEN}" placeholder="${escapeHTML(getZhValue("ui.question.freePlaceholder", "Make a sentence"))}" oninput="updateTextAnswer(${safeQid},this.value)">${escapeHTML(currentValue)}</textarea>`;
   }
   h += `</div>`;
@@ -2261,6 +2327,7 @@ function showReview(section, btn) {
       h += `<p class="rev-text">${escapeHTML(getZhValue("ui.review.wordList", "Words:"))}${q.words.map((w) => escapeHTML(w)).join("　")}</p>`;
     if (q.word)
       h += `<p class="rev-text">${escapeHTML(getZhValue("ui.review.keyword", "Keyword:"))}${escapeHTML(q.word)}</p>`;
+    h += renderQuestionImage(q, { review: true });
 
     // Show answer info
     const cAns = getCanonicalAnswer(q.id);
